@@ -395,16 +395,16 @@ get_special_coordinates(){
 # Map METAR codes to condition words
 metar_condition_word(){
   local m="$(printf '%s' "$1" | tr -s ' ')"
-  [[ "$m" =~ (\+|-)?TS ]] && { echo "thunderstorm"; return; }
-  [[ "$m" =~ FZRA|FZDZ|\+RA|-RA|RA ]] && { echo "rain"; return; }
-  [[ "$m" =~ SN ]] && { echo "snow"; return; }
-  [[ "$m" =~ PL ]] && { echo "hail"; return; }
-  [[ "$m" =~ FG ]] && { echo "fog"; return; }
-  [[ "$m" =~ BR|HZ|FU|DU|SA ]] && { echo "mist"; return; }
-  [[ "$m" =~ OVC|BKN|SCT ]] && { echo "cloudy"; return; }
-  [[ "$m" =~ FEW ]] && { echo "clear"; return; }
-  [[ "$m" =~ (CLR|SKC) ]] && { echo "clear"; return; }
-  echo "clear"
+  [[ "$m" =~ (\+|-)?TS ]] && { echo "withh thunderstorms"; return; }
+  [[ "$m" =~ FZRA|FZDZ|\+RA|-RA|RA ]] && { echo "with rain"; return; }
+  [[ "$m" =~ SN ]] && { echo "with snow"; return; }
+  [[ "$m" =~ PL ]] && { echo "with hail"; return; }
+  [[ "$m" =~ FG ]] && { echo "with fog"; return; }
+  [[ "$m" =~ BR|HZ|FU|DU|SA ]] && { echo "with mist"; return; }
+  [[ "$m" =~ OVC|BKN|SCT ]] && { echo "and cloudy"; return; }
+  [[ "$m" =~ FEW ]] && { echo "and clear"; return; }
+  [[ "$m" =~ (CLR|SKC) ]] && { echo "and clear"; return; }
+  echo "and clear"
 }
 
 # Parse temperature from METAR (returns Fahrenheit)
@@ -424,15 +424,15 @@ parse_metar_temp_f(){
 openmeteo_condition_word(){
   local code="$1" is_day="${2:-1}"
   case "$code" in
-    0) echo "clear" ;;
-    1|2) [ "$is_day" = "1" ] && echo "sunny" || echo "clear" ;;  # Day/night aware
-    3) echo "cloudy" ;;
-    45|48) echo "fog" ;;
-    51|53|55|56|57) echo "rain" ;;
-    61|63|65|66|67|80|81|82) echo "rain" ;;
-    71|73|75|77|85|86) echo "snow" ;;
-    95|96|99) echo "thunderstorm" ;;
-    *) echo "clear" ;;
+    0) echo "and clear" ;;
+    1|2) [ "$is_day" = "1" ] && echo "and sunny" || echo "and clear" ;;  # Day/night aware
+    3) echo "and cloudy" ;;
+    45|48) echo "with fog" ;;
+    51|53|55|56|57) echo "with rain" ;;
+    61|63|65|66|67|80|81|82) echo "with rain" ;;
+    71|73|75|77|85|86) echo "with snow" ;;
+    95|96|99) echo "with thunderstorms" ;;
+    *) echo "and clear" ;;
   esac
 }
 
@@ -463,7 +463,7 @@ write_condition_gsm(){
 # ---------- Canadian FSA to City Mapping ----------
 get_canadian_city(){
   local fsa="$1"
-
+  
   # 3-character FSA mappings (Ontario focus)
   case "$fsa" in
     N7L) echo "Chatham-Kent, Ontario" ;;
@@ -647,7 +647,21 @@ ctemp="$(awk -v f="$temp_f" 'BEGIN{printf "%.0f", (f-32)*5/9}')"
 
 # ---------- Output ----------
 if [ "$display_mode" = "v" ]; then
-  echo -e "${temp_f}°F, ${ctemp}°C / ${cond}"
+  prefix="It is currently"
+  if [ "${Temperature_mode:-F}" = "C" ]; then
+    if [ "$ctemp" = "1" ]; then
+      temp="${ctemp} degree celsius"
+    else
+      temp="${ctemp} degrees celsius"
+    fi
+  else
+    if [ "$temp_f" = "1" ]; then
+      temp="${temp_f} degree fahrenheit"
+    else
+      temp="${temp_f} degrees fahrenheit"
+    fi
+  fi
+  echo -e "${prefix} ${temp} ${cond}."
   exit 0
 fi
 
