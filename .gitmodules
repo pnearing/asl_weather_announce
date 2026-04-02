@@ -1,0 +1,3 @@
+[submodule "KD5FMU/time_weather_announce"]
+	path = KD5FMU/time_weather_announce
+	url = https://github.com/KD5FMU/Time-Weather-Announce.git
