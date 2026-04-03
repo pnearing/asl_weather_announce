@@ -109,10 +109,11 @@ def parse_arguments() -> argparse.Namespace:
         Namespace object containing parsed CLI arguments.
         
     Arguments:
-        --config: Path to configuration file (default: /etc/asl_weather.conf)
-        --postal-code: Postal/ZIP code to lookup (overrides config)
-        --country-code: 2-letter ISO country code (overrides config)
-        --node-number: ASL node number (overrides config)
+        -C, --config: Path to configuration file (default: /etc/asl_weather.conf)
+        -p, --postal-code: Postal/ZIP code to lookup (overrides config)
+        -c, --country-code: 2-letter ISO country code (overrides config)
+        -n, --node-number: ASL node number (overrides config)
+        -v, --voice: TTS voice to use (e.g., en_GB-alan-low.onnx)
     """
     parser = argparse.ArgumentParser(
         description="ASL Weather Announce - Get current weather for a postal code",
@@ -120,34 +121,41 @@ def parse_arguments() -> argparse.Namespace:
         epilog="""
 Examples:
   sudo python main.py
-  sudo python main.py --postal-code N6A3K7 --country-code CA
-  sudo python main.py --config /path/to/custom.conf --node-number 12345
+  sudo python main.py -p N6A3K7 -c CA
+  sudo python main.py -C /path/to/custom.conf -n 12345
+  sudo python main.py -p N6A3K7 -c CA -v en_GB-alan-low.onnx
         """
     )
     
     parser.add_argument(
-        "--config",
+        "-C", "--config",
         type=str,
         default="/etc/asl_weather.conf",
         help="Path to configuration file (default: /etc/asl_weather.conf)"
     )
     
     parser.add_argument(
-        "--postal-code",
+        "-p", "--postal-code",
         type=str,
         help="Postal/ZIP code to lookup (overrides config file)"
     )
     
     parser.add_argument(
-        "--country-code",
+        "-c", "--country-code",
         type=str,
         help="2-letter ISO country code (overrides config file)"
     )
     
     parser.add_argument(
-        "--node-number",
+        "-n", "--node-number",
         type=str,
         help="ASL node number (overrides config file)"
+    )
+    
+    parser.add_argument(
+        "-v", "--voice",
+        type=str,
+        help="TTS voice to use (e.g., en_GB-alan-low.onnx, overrides config file)"
     )
     
     return parser.parse_args()
@@ -165,7 +173,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
         {
             "postal_code": str or None,
             "country_code": str or None,
-            "node_number": str or None
+            "node_number": str or None,
+            "voice": str or None
         }
         
     Notes:
@@ -176,7 +185,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
     config = {
         "postal_code": None,
         "country_code": None,
-        "node_number": None
+        "node_number": None,
+        "voice": None
     }
     
     if not os.path.exists(config_path):
@@ -201,6 +211,11 @@ def load_config(config_path: str) -> Dict[str, Any]:
     if parser.has_section("asl"):
         if parser.has_option("asl", "node_number"):
             config["node_number"] = parser.get("asl", "node_number").strip()
+    
+    # Read asl-tts section
+    if parser.has_section("asl-tts"):
+        if parser.has_option("asl-tts", "voice"):
+            config["voice"] = parser.get("asl-tts", "voice").strip()
     
     return config
 
@@ -227,11 +242,12 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "postal_code": cli_args.postal_code or file_config["postal_code"],
         "country_code": cli_args.country_code or file_config["country_code"],
         "node_number": cli_args.node_number or file_config["node_number"],
+        "voice": cli_args.voice or file_config["voice"],
     }
     
     # Validate required values
     if not config["postal_code"]:
-        print("Error: postal_code is required. Provide via --postal-code or config file.", file=sys.stderr)
+        print("Error: postal_code is required. Provide via --postal-code(-p) or config file.", file=sys.stderr)
         print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
         print("\nExample config file format:", file=sys.stderr)
         print("[location]", file=sys.stderr)
@@ -240,7 +256,7 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         sys.exit(1)
     
     if not config["country_code"]:
-        print("Error: country_code is required. Provide via --country-code or config file.", file=sys.stderr)
+        print("Error: country_code is required. Provide via --country-code(-c) or config file.", file=sys.stderr)
         print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
         sys.exit(1)
     
@@ -349,7 +365,7 @@ def main() -> int:
     # check_root_privileges()
     
     # Verify dependencies are installed
-    check_dependencies()
+    # check_dependencies()
     
     # Resolve configuration (CLI overrides config file)
     config = resolve_configuration(cli_args)

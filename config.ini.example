@@ -20,3 +20,12 @@ country_code = CA
 # This is used for future integration with the AllStarLink system
 # Example: 12345
 node_number = 12345
+
+[asl-tts]
+# TTS voice to use for announcements
+# Format: <language>_<region>-<voice>-<quality>.onnx
+# Example: en_GB-alan-low.onnx
+# Note: The voice file must be installed on the system
+#       You can find available voices in the /var/lib/piper-tts/ directory
+#       Using medium or high quality voices, is NOT recommended, as per asl-tts documentation.
+voice = en_GB-alan-low.onnx
