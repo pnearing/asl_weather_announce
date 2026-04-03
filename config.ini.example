@@ -1,0 +1,22 @@
+# ASL Weather Announce Configuration File
+# 
+# This is an example configuration file for the ASL Weather Announce system.
+# Copy this file to /etc/asl_weather.conf and customize for your location.
+#
+# The main.py script looks for configuration at /etc/asl_weather.conf by default.
+# You can specify a custom config file using the --config command line option.
+
+[location]
+# Postal code or ZIP code for weather lookup
+# Examples: N6A 3K7 (Canada), 90210 (USA), SW1A 1AA (UK)
+postal_code = N6A 3K7
+
+# 2-letter ISO country code
+# Examples: CA (Canada), US (United States), GB (United Kingdom)
+country_code = CA
+
+[asl]
+# ASL (AllStarLink) node number
+# This is used for future integration with the AllStarLink system
+# Example: 12345
+node_number = 12345
