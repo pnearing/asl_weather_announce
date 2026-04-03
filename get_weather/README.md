@@ -48,6 +48,7 @@ print(result.natural_language())
 Fetch current weather conditions for a specific location.
 
 **Parameters:**
+
 - `city` (str): Human-readable city name for output text
 - `state_province` (str, optional): State or province name for output text
 - `country` (str, optional): Country name for output text fallback
@@ -58,9 +59,11 @@ Fetch current weather conditions for a specific location.
 - `user_agent` (str): User-Agent header for HTTP requests
 
 **Returns:**
+
 - `CurrentWeatherResult`: Object containing weather data and formatting methods
 
 **Raises:**
+
 - `ValueError`: Invalid input parameters
 - `NetworkError`: Network connectivity issues
 - `RateLimitError`: API rate limiting
@@ -75,6 +78,7 @@ Fetch current weather conditions for a specific location.
 Represents current weather conditions for a location.
 
 **Attributes:**
+
 - `city` (str): City name
 - `state_province` (str, optional): State or province
 - `country` (str, optional): Country name
@@ -88,6 +92,7 @@ Represents current weather conditions for a location.
 - `raw` (dict): Raw API response data
 
 **Methods:**
+
 - `location_label` (property): Formatted location string (e.g., "London, Ontario")
 - `natural_language()` (str): Complete weather statement for TTS
 
@@ -98,10 +103,12 @@ Represents current weather conditions for a location.
 Convert WMO weather codes to natural language descriptions.
 
 **Parameters:**
+
 - `weather_code` (int, optional): WMO weather code (0-99)
 - `is_day` (bool, optional): Currently unused, reserved for future use
 
 **Returns:**
+
 - `str`: Natural language weather description
 
 ## Usage Examples
@@ -320,4 +327,17 @@ This module is part of the AllStarLink ASL Weather Announce project. For bug rep
 
 ## License
 
-This module is released under the same license as the AllStarLink ASL Weather Announce project.
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0).
+
+This means you are free to:
+
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial** — You may not use the material for commercial purposes.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+
+See the [LICENSE](../LICENSE) file for the full license text.

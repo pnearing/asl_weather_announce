@@ -49,6 +49,7 @@ else:
 Main class for postal code location lookups with multiple API services and comprehensive error handling.
 
 **Constructor Parameters:**
+
 - `timeout` (float): Default timeout for requests in seconds (default: 10.0)
 - `user_agent` (str): Default user agent for HTTP requests
 - `logger` (logging.Logger, optional): Logger instance for debugging
@@ -60,15 +61,18 @@ Main class for postal code location lookups with multiple API services and compr
 Look up city and province/state from a postal code + 2-letter country code.
 
 **Parameters:**
+
 - `postal_code` (str): Postal code to lookup
 - `country_code` (str): 2-letter ISO country code
 - `timeout` (float, optional): Timeout override for this request
 - `user_agent` (str, optional): User agent override for this request
 
 **Returns:**
+
 - `dict` or `None`: Dictionary with location data or None if not found
 
 **Dictionary Structure:**
+
 ```python
 {
     "postal_code": "90210",
@@ -83,6 +87,7 @@ Look up city and province/state from a postal code + 2-letter country code.
 ```
 
 **Raises:**
+
 - `ValueError`: Invalid input parameters
 - `NetworkError`: Network connectivity issues
 - `RateLimitError`: API rate limiting
@@ -96,9 +101,11 @@ Look up city and province/state from a postal code + 2-letter country code.
 Safely convert value to float, returning None on failure.
 
 **Parameters:**
+
 - `value`: Value to convert (typically string or None)
 
 **Returns:**
+
 - `float` or `None`: Float value if conversion succeeds, None otherwise
 
 ## Usage Examples
@@ -239,13 +246,14 @@ else:
 
 ### Primary Service: Zippopotam.us
 
-- **Endpoint**: https://api.zippopotam.us
+- **Endpoint**: [https://api.zippopotam.us](https://api.zippopotam.us)
 - **Coverage**: US and many other countries
 - **Speed**: Fast and lightweight
 - **Rate Limits**: None specified
 - **Format**: Simple JSON response
 
 **Example Response:**
+
 ```json
 {
   "post code": "90210",
@@ -264,7 +272,7 @@ else:
 
 ### Fallback Service: Nominatim OpenStreetMap
 
-- **Endpoint**: https://nominatim.openstreetmap.org
+- **Endpoint**: [https://nominatim.openstreetmap.org](https://nominatim.openstreetmap.org)
 - **Coverage**: Global
 - **Speed**: Slower but comprehensive
 - **Rate Limits**: ~1 request per second recommended
@@ -277,6 +285,7 @@ else:
 The module works with many countries, but coverage varies by service:
 
 ### Well-Supported Countries
+
 - **United States** (US): Full coverage via Zippopotam.us
 - **Canada** (CA): Full coverage via Zippopotam.us  
 - **United Kingdom** (GB): Full coverage via Nominatim
@@ -286,6 +295,7 @@ The module works with many countries, but coverage varies by service:
 - **Japan** (JP): Good coverage via Nominatim
 
 ### Partial Coverage
+
 Many other countries have partial coverage, primarily through Nominatim. The fallback mechanism ensures the best possible results.
 
 ## Error Handling Strategy
@@ -308,16 +318,20 @@ The module provides granular error handling for different failure scenarios:
 ## Performance Considerations
 
 ### Response Times
+
 - **Zippopotam.us**: Typically 100-300ms
 - **Nominatim**: Typically 500-2000ms (slower but more comprehensive)
 
 ### Rate Limiting
+
 - **Zippopotam.us**: No explicit rate limits
 - **Nominatim**: Recommend 1 request/second maximum
 - **Batch operations**: Include delays between requests
 
 ### Caching
+
 For production use, consider implementing caching to reduce API calls:
+
 ```python
 import functools
 import time
@@ -438,17 +452,21 @@ if __name__ == "__main__":
 ## Data Quality Notes
 
 ### Postal Code Formats
+
 Different countries use different postal code formats:
+
 - **US**: 5 digits (90210) or 9 digits with hyphen (90210-1234)
 - **Canada**: 6 characters with space (N6A 3K7)
 - **UK**: Variable length with space (SW1A 0AA)
 - **Germany**: 5 digits (10115)
 
 ### Coordinate Precision
+
 - **Zippopotam.us**: Typically 2-4 decimal places
 - **Nominatim**: Typically 5-7 decimal places (more precise)
 
 ### Address Hierarchy
+
 Nominatim provides detailed address hierarchy while Zippopotam.us provides basic city/state information.
 
 ## Contributing
@@ -457,4 +475,17 @@ This module is part of the AllStarLink ASL Weather Announce project. For bug rep
 
 ## License
 
-This module is released under the same license as the AllStarLink ASL Weather Announce project.
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0).
+
+This means you are free to:
+
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial** — You may not use the material for commercial purposes.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+
+See the [LICENSE](LICENSE) file for the full license text.
