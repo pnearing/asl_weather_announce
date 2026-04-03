@@ -34,7 +34,7 @@ import subprocess
 import sys
 from typing import Dict, Any
 
-from get_location import PostalLookup, PostalLookupError, NetworkError
+from get_location import PostalLookup, PostalLookupError, NetworkError, normalize_country_code
 from get_weather import get_current_weather, WeatherLookupError, NetworkError
 
 DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
@@ -150,7 +150,7 @@ Examples:
     parser.add_argument(
         "-c", "--country-code",
         type=str,
-        help="2-letter ISO country code (overrides config file)"
+        help="Country code - accepts 2-letter (CA), 3-letter (CAN), numeric (124), or full name (Canada). Case-insensitive."
     )
     
     parser.add_argument(
@@ -282,6 +282,16 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         print("Error: country_code is required. Provide via --country-code(-c) or config file.", file=sys.stderr)
         print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
         sys.exit(1)
+    
+    # Normalize country code to 2-letter ISO format
+    normalized_country = normalize_country_code(config["country_code"])
+    if normalized_country is None:
+        print(f"Error: Invalid country_code '{config['country_code']}'.", file=sys.stderr)
+        print("Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States).", file=sys.stderr)
+        print("Examples: CA, CAN, 124, Canada", file=sys.stderr)
+        sys.exit(1)
+    
+    config["country_code"] = normalized_country
     
     if not config["node_number"]:
         print("Error: node_number is required. Provide via --node-number(-n) or config file.", file=sys.stderr)

@@ -15,6 +15,7 @@ from .exceptions import (
     RateLimitError,
     APIResponseError,
 )
+from .country_codes import normalize_country_code
 
 
 class PostalLookup:
@@ -74,12 +75,21 @@ class PostalLookup:
         user_agent: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Look up city and province/state from a postal code + 2-letter country code.
+        Look up city and province/state from a postal code + country code.
         
         This method attempts to find location information using multiple API services
         in a fallback chain. It first tries Zippopotam.us (fast, lightweight),
         and if that fails, falls back to Nominatim OpenStreetMap 
         (comprehensive but slower).
+        
+        The country_code parameter accepts flexible input:
+        - 2-letter ISO codes (e.g., "US", "CA")
+        - 3-letter ISO codes (e.g., "USA", "CAN")  
+        - Numeric codes (e.g., "840", "124")
+        - Full country names (e.g., "United States", "Canada")
+        
+        All country code formats are case-insensitive and will be normalized
+        to the standard 2-letter ISO code automatically.
         
         Error Handling Strategy:
         - Network errors, rate limits, and API errors from the primary service
@@ -103,7 +113,7 @@ class PostalLookup:
         
         Args:
             postal_code: Postal code to lookup
-            country_code: 2-letter ISO country code
+            country_code: Country code (2-letter, 3-letter, numeric, or full name)
             timeout: Optional timeout override for this request
             user_agent: Optional user agent override for this request
             
@@ -134,13 +144,22 @@ class PostalLookup:
         if not postal_code or not isinstance(postal_code, str):
             self.logger.error(f"Invalid postal_code: {postal_code}")
             raise ValueError("postal_code must be a non-empty string")
-        if not country_code or not isinstance(country_code, str) or len(country_code.strip()) != 2:
+        if not country_code or not isinstance(country_code, str):
             self.logger.error(f"Invalid country_code: {country_code}")
-            raise ValueError("country_code must be a 2-letter ISO country code")
+            raise ValueError("country_code must be a non-empty string")
 
-        # Normalize inputs
+        # Normalize country code to 2-letter ISO format
+        normalized_country = normalize_country_code(country_code)
+        if normalized_country is None:
+            self.logger.error(f"Invalid country_code: {country_code}")
+            raise ValueError(
+                f"country_code '{country_code}' is not a valid country code. "
+                "Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States)."
+            )
+
+        # Normalize postal code
         postal_code = postal_code.strip()
-        country_code = country_code.strip().upper()
+        country_code = normalized_country
         
         self.logger.debug(
             f"Normalized inputs - postal_code: '{postal_code}', country_code: '{country_code}'"
