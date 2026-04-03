@@ -155,7 +155,7 @@ Examples:
     
     parser.add_argument(
         "-n", "--node-number",
-        type=str,
+        type=int,
         help="ASL node number (overrides config file)"
     )
     
@@ -224,7 +224,11 @@ def load_config(config_path: str) -> Dict[str, Any]:
     # Read ASL section
     if parser.has_section("asl"):
         if parser.has_option("asl", "node_number"):
-            config["node_number"] = parser.get("asl", "node_number").strip()
+            try:
+                config["node_number"] = int(parser.get("asl", "node_number").strip())
+            except ValueError:
+                print(f"Error: Invalid node number in config file: {parser.get('asl', 'node_number')}", file=sys.stderr)
+                sys.exit(1)
     
     # Read asl-tts section
     if parser.has_section("asl-tts"):
@@ -232,6 +236,9 @@ def load_config(config_path: str) -> Dict[str, Any]:
             config["voice"] = parser.get("asl-tts", "voice").strip()
         if parser.has_option("asl-tts", "voice_dir"):
             config["voice_dir"] = parser.get("asl-tts", "voice_dir").strip()
+            if not os.path.isdir(config["voice_dir"]):
+                print(f"Error: Voice directory does not exist: {config['voice_dir']}", file=sys.stderr)
+                sys.exit(1)
     
     return config
 
