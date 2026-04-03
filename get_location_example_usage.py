@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Example script demonstrating how to use the get_location module.
+Example script demonstrating how to use the get_location package.
 """
 
 import logging
+import time
+
 from get_location import (
-    lookup_city_region_by_postal_code, 
-    PostalLookupError, 
-    NetworkError, 
-    RateLimitError, 
-    APIResponseError
+    PostalLookup,
+    PostalLookupError,
+    NetworkError,
+    RateLimitError,
+    APIResponseError,
 )
 
 def main():
@@ -19,6 +21,13 @@ def main():
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
+    
+    # Create PostalLookup instance with custom settings
+    lookup = PostalLookup(
+        timeout=15.0,
+        user_agent="my-app/1.0 (contact: my@example.com)",
+        logger=logger
+    )
     
     # Example postal codes to test
     test_cases = [
@@ -31,13 +40,9 @@ def main():
     
     for postal_code, country_code in test_cases:
         logger.info(f"Looking up: {postal_code}, {country_code}")
-        
+        time.sleep(2) # Be nice to the API
         try:
-            result = lookup_city_region_by_postal_code(
-                postal_code=postal_code,
-                country_code=country_code,
-                logger=logger  # Pass our logger for verbose output
-            )
+            result = lookup.lookup(postal_code, country_code)
             
             if result:
                 print(f"✓ {postal_code} ({country_code}): {result['city']}, {result['state_province']}, {result['country']}")
