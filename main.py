@@ -38,6 +38,7 @@ from get_location import PostalLookup, PostalLookupError, NetworkError
 from get_weather import get_current_weather, WeatherLookupError, NetworkError
 
 DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
+DEFAULT_CONFIG_PATH = "/etc/asl_weather.conf"
 
 
 def check_root_privileges() -> None:
@@ -115,7 +116,7 @@ def parse_arguments() -> argparse.Namespace:
         Namespace object containing parsed CLI arguments.
         
     Arguments:
-        -C, --config: Path to configuration file (default: /etc/asl_weather.conf)
+        -C, --config: Path to configuration file (default: /etc/asl_weather.conf (OR more properly the value of DEFAULT_CONFIG_PATH))
         -p, --postal-code: Postal/ZIP code to lookup (overrides config)
         -c, --country-code: 2-letter ISO country code (overrides config)
         -n, --node-number: ASL node number (overrides config)
@@ -136,8 +137,8 @@ Examples:
     parser.add_argument(
         "-C", "--config",
         type=str,
-        default="/etc/asl_weather.conf",
-        help="Path to configuration file (default: /etc/asl_weather.conf)"
+        default=DEFAULT_CONFIG_PATH,
+        help=f"Path to configuration file (default: {DEFAULT_CONFIG_PATH})"
     )
     
     parser.add_argument(
