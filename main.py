@@ -164,6 +164,12 @@ Examples:
         help="TTS voice to use (e.g., en_GB-alan-low.onnx, overrides config file)"
     )
     
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the announcement text instead of sending it to asl-tts"
+    )
+
     return parser.parse_args()
 
 
@@ -373,10 +379,10 @@ def main() -> int:
     cli_args = parse_arguments()
     
     # Check root privileges
-    # check_root_privileges()
+    check_root_privileges()
     
     # Verify dependencies are installed
-    # check_dependencies()
+    check_dependencies()
     
     # Resolve configuration (CLI overrides config file)
     config = resolve_configuration(cli_args)
@@ -409,8 +415,17 @@ def main() -> int:
     if config['voice']:
         asl_tts_cmd.append(f"-v {config['voice']}")
     
-    # Output weather information
-    print(announcement)
+    # Output weather information to stdout if in dry run mode
+    if cli_args.dry_run:
+        print(announcement)
+        return 0
+    
+    # Send announcement to asl-tts
+    try:
+        subprocess.check_call(asl_tts_cmd)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to send announcement to asl-tts: {e}", file=sys.stderr)
+        sys.exit(1)
     
     return 0
 
