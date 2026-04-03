@@ -29,8 +29,15 @@ Configuration:
 import argparse
 import configparser
 import os
+import shutil
+import subprocess
 import sys
-from typing import Optional, Dict, Any
+from typing import Dict, Any
+
+from get_location import PostalLookup, PostalLookupError, NetworkError
+from get_weather import get_current_weather, WeatherLookupError, NetworkError
+
+DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
 
 
 def check_root_privileges() -> None:
@@ -68,7 +75,6 @@ def check_dependencies() -> None:
     Raises:
         SystemExit: If any required dependency is missing with installation instructions.
     """
-    import shutil
     
     # Check Python modules
     required_modules = [
@@ -186,7 +192,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "postal_code": None,
         "country_code": None,
         "node_number": None,
-        "voice": None
+        "voice": None,
+        "voice_dir": DEFAULT_VOICE_DIR,
     }
     
     if not os.path.exists(config_path):
@@ -216,6 +223,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
     if parser.has_section("asl-tts"):
         if parser.has_option("asl-tts", "voice"):
             config["voice"] = parser.get("asl-tts", "voice").strip()
+        if parser.has_option("asl-tts", "voice_dir"):
+            config["voice_dir"] = parser.get("asl-tts", "voice_dir").strip()
     
     return config
 
@@ -260,6 +269,11 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
         sys.exit(1)
     
+    if not config["node_number"]:
+        print("Error: node_number is required. Provide via --node-number(-n) or config file.", file=sys.stderr)
+        print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
+        sys.exit(1)
+    
     return config
 
 
@@ -285,7 +299,6 @@ def get_location(postal_code: str, country_code: str) -> Dict[str, Any]:
     Raises:
         SystemExit: If location lookup fails.
     """
-    from get_location import PostalLookup, PostalLookupError, NetworkError
     
     lookup = PostalLookup()
     
@@ -327,8 +340,6 @@ def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C") -> A
     Raises:
         SystemExit: If weather lookup fails.
     """
-    from get_weather import get_current_weather, WeatherLookupError, NetworkError
-    
     try:
         result = get_current_weather(
             city=location_data["city"],
@@ -370,18 +381,36 @@ def main() -> int:
     # Resolve configuration (CLI overrides config file)
     config = resolve_configuration(cli_args)
     
+    # Check if the voice exists
+    if config['voice']:
+        voice_file_path = os.path.join(config['voice_dir'], config['voice'])
+        if not os.path.exists(voice_file_path) and not os.path.exists(f"{voice_file_path}.json"):
+            print(f"Error: Voice '{config['voice']}' not found in {config['voice_dir']}, using default voice.", file=sys.stderr)
+            config['voice'] = None
+
     # Get location data from postal code
     location_data = get_location(config["postal_code"], config["country_code"])
     
-    # Clean up city name for TTS (remove parenthetical content like "(UWO)")
+    # Clean up city name for TTS (remove parenthetical content like "(UWO)" from "London North (UWO)")
     if location_data.get("city"):
         location_data["city"] = location_data["city"].split("(")[0].strip()
     
     # Get current weather for the location
     weather = get_weather(location_data)
     
+    # Build announcement text
+    announcement = weather.natural_language()
+    
+    # Build asl-tts command line:
+    asl_tts_cmd = []
+    asl_tts_cmd.append(shutil.which("asl-tts"))
+    asl_tts_cmd.append(f"-n {config['node_number']}")
+    asl_tts_cmd.append(f"-t {announcement}")
+    if config['voice']:
+        asl_tts_cmd.append(f"-v {config['voice']}")
+    
     # Output weather information
-    print(weather.natural_language())
+    print(announcement)
     
     return 0
 

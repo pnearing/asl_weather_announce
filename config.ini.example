@@ -25,7 +25,7 @@ node_number = 12345
 # TTS voice to use for announcements
 # Format: <language>_<region>-<voice>-<quality>.onnx
 # Example: en_GB-alan-low.onnx
-# Note: The voice file must be installed on the system
+# Note: The voice file must be installed on the system, otherwise the default voice will be used.
 #       You can find available voices in the /var/lib/piper-tts/ directory
 #       Using medium or high quality voices, is NOT recommended, as per asl-tts documentation.
 voice = en_GB-alan-low.onnx
