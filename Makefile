@@ -61,9 +61,10 @@ install:
 	# Install Python modules
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_weather
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_location
+	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_location/data
 	install -m 644 get_weather/*.py $(DESTDIR)/usr/lib/python3/dist-packages/get_weather/
 	install -m 644 get_location/*.py $(DESTDIR)/usr/lib/python3/dist-packages/get_location/
-	install -m 644 get_location/data/*.json $(DESTDIR)/usr/lib/python3/dist-packages/get_location/data/ 2>/dev/null || true
+	install -m 644 get_location/data/*.json $(DESTDIR)/usr/lib/python3/dist-packages/get_location/data/
 
 # Lint the package
 lint:
