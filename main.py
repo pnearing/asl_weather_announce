@@ -26,6 +26,11 @@ Configuration:
     node_number = 12345
 """
 
+__version__ = "1.0.0"
+__author__ = "Peter Neearing"
+__email__ = "me@peternearing.ca"
+
+
 import argparse
 import configparser
 import logging
@@ -33,6 +38,7 @@ import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from get_location import PostalLookup, PostalLookupError, NetworkError, normalize_country_code
@@ -216,6 +222,18 @@ Examples:
     )
     
     parser.add_argument(
+        "-t", "--say-time",
+        action="store_true",
+        help="Announce the current time before the weather (overrides config file)"
+    )
+    
+    parser.add_argument(
+        "-d", "--say-date",
+        action="store_true",
+        help="Announce the current date before the weather (overrides config file)"
+    )
+    
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the announcement text instead of sending it to asl-tts"
@@ -255,6 +273,9 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "voice": None,
         "voice_dir": DEFAULT_VOICE_DIR,
         "log_file": None,
+        "say_time": False,
+        "say_date": False,
+        "timezone": None,
     }
     
     if not os.path.exists(config_path):
@@ -272,6 +293,16 @@ def load_config(config_path: str) -> Dict[str, Any]:
     if parser.has_section("asl_weather"):
         if parser.has_option("asl_weather", "log_file"):
             config["log_file"] = parser.get("asl_weather", "log_file").strip()
+        if parser.has_option("asl_weather", "say_time"):
+            say_time_val = parser.get("asl_weather", "say_time").strip().lower()
+            config["say_time"] = say_time_val in ("true", "1", "yes", "on")
+        if parser.has_option("asl_weather", "say_date"):
+            say_date_val = parser.get("asl_weather", "say_date").strip().lower()
+            config["say_date"] = say_date_val in ("true", "1", "yes", "on")
+        if parser.has_option("asl_weather", "timezone"):
+            timezone_val = parser.get("asl_weather", "timezone").strip()
+            if timezone_val:
+                config["timezone"] = timezone_val
     
     # Read location section
     if parser.has_section("location"):
@@ -345,6 +376,9 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "voice": cli_args.voice or file_config["voice"],
         "voice_dir": file_config["voice_dir"],
         "log_file": cli_args.log_file or file_config["log_file"],
+        "say_time": cli_args.say_time or file_config["say_time"],
+        "say_date": cli_args.say_date or file_config["say_date"],
+        "timezone": file_config["timezone"],
     }
     
     # Check if latitude/longitude override is provided
@@ -357,7 +391,7 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
             config["latitude"] = lat
             config["longitude"] = lon
             logger = logging.getLogger(__name__)
-            logger.info(f"Using configured coordinates: latitude={lat}, longitude={lon}")
+            logger.debug(f"Using configured coordinates: latitude={lat}, longitude={lon}")
         except ValueError as e:
             logging.error(f"Invalid coordinates in config file: {e}")
             logging.error(f"Config file location: {cli_args.config}")
@@ -566,7 +600,7 @@ def main() -> int:
                 "latitude": config["latitude"],
                 "longitude": config["longitude"],
             }
-            logger.info(f"Using configured location name: {config['location_name']}")
+            logger.debug(f"Using configured location name: {config['location_name']}")
         else:
             # Use configured coordinates and perform reverse lookup to get location name
             lookup = PostalLookup(logger=logger)
@@ -585,7 +619,7 @@ def main() -> int:
                     # Ensure coordinates from config are preserved (reverse lookup may have slightly different values)
                     location_data["latitude"] = config["latitude"]
                     location_data["longitude"] = config["longitude"]
-                    logger.info(f"Resolved location from coordinates: {location_data['city']}, {location_data.get('state_province')}")
+                    logger.debug(f"Resolved location from coordinates: {location_data['city']}, {location_data.get('state_province')}")
             except PostalLookupError as e:
                 logger.warning(f"Reverse geocoding failed: {e}, using generic location name")
                 location_data = {
@@ -609,6 +643,39 @@ def main() -> int:
     
     # Build announcement text
     announcement = weather.natural_language()
+    
+    # Add time and/or date to announcement if enabled
+    time_parts = []
+    if config.get("say_time") or config.get("say_date"):
+        timezone_str = config.get("timezone")
+        if timezone_str:
+            try:
+                from zoneinfo import ZoneInfo
+                now = datetime.now(ZoneInfo(timezone_str))
+            except Exception:
+                # Fallback to local time if timezone is invalid
+                logger.warning(f"Invalid timezone '{timezone_str}', using local time")
+                now = datetime.now()
+        else:
+            now = datetime.now()
+        
+        # Add date if enabled
+        if config.get("say_date"):
+            # Format date in natural language (e.g., "April 4, 2026")
+            date_str = now.strftime("%B %d, %Y")
+            # Remove leading zero from day (e.g., "April 04" -> "April 4")
+            date_str = date_str.replace(" 0", " ")
+            time_parts.append(f"Today is {date_str}")
+        
+        # Add time if enabled
+        if config.get("say_time"):
+            # Format time in natural language (e.g., "10:30 AM" -> "10 30 AM" for better TTS)
+            time_str = now.strftime("%I:%M %p").lstrip("0").replace(":", " ")
+            time_parts.append(f"The current time is {time_str}")
+        
+        # Prepend date/time to announcement
+        if time_parts:
+            announcement = f"{'. '.join(time_parts)}. {announcement}"
     
     # Build asl-tts command line:
     asl_tts_cmd = []

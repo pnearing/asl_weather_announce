@@ -51,6 +51,10 @@ API Information:
 
 from __future__ import annotations
 
+__version__ = "1.0.0"
+__author__ = "Peter Neearing"
+__email__ = "me@peternearing.ca"
+
 from dataclasses import dataclass
 from typing import Optional, Literal, Dict, Any
 import requests
@@ -199,7 +203,7 @@ def get_current_weather(
     longitude: float,
     temperature_unit: TemperatureUnit = "C",
     timeout: float = 10.0,
-    user_agent: str = "weather-module/1.0 (contact: you@example.com)",
+    user_agent: str = f"weather-module/{__version__} (contact: {__author__} [<{__email__}>])",
 ) -> CurrentWeatherResult:
     """
     Fetch current weather conditions using latitude/longitude.

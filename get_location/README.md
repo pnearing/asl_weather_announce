@@ -95,6 +95,45 @@ Look up city and province/state from a postal code + 2-letter country code.
 - `APIResponseError`: Invalid API responses
 - `PostalLookupError`: General postal lookup issues
 
+#### `reverse_lookup(latitude, longitude, *, timeout=None, user_agent=None)`
+
+Perform reverse geocoding to get location name from coordinates.
+
+Uses Nominatim OpenStreetMap API to look up the city, state/province,
+and country from a given latitude and longitude.
+
+**Parameters:**
+
+- `latitude` (float): Decimal latitude (-90 to 90)
+- `longitude` (float): Decimal longitude (-180 to 180)
+- `timeout` (float, optional): Timeout override for this request
+- `user_agent` (str, optional): User agent override for this request
+
+**Returns:**
+
+- `dict` or `None`: Dictionary with location data or None if not found
+
+**Dictionary Structure:**
+
+```python
+{
+    "city": "Toronto",
+    "state_province": "Ontario",
+    "country": "Canada",
+    "country_code": "CA",
+    "latitude": 43.6532,
+    "longitude": -79.3832,
+    "source": "nominatim_reverse"
+}
+```
+
+**Raises:**
+
+- `ValueError`: Invalid coordinates
+- `NetworkError`: Network connectivity issues
+- `RateLimitError`: API rate limiting
+- `APIResponseError`: Invalid API responses
+
 #### Static Methods
 
 #### `_safe_float(value)`
@@ -129,6 +168,25 @@ result = lookup.lookup("N6A 3K7", "CA")
 if result:
     print(f"{result['city']}, {result['state_province']}")
     print(f"Coordinates: {result['latitude']}, {result['longitude']}")
+```
+
+### Reverse Geocoding (Coordinates to Location)
+
+```python
+from get_location import PostalLookup
+
+lookup = PostalLookup()
+
+# Look up location name from coordinates
+result = lookup.reverse_lookup(43.6532, -79.3832)  # Toronto, ON
+
+if result:
+    print(f"Location: {result['city']}, {result['state_province']}")
+    print(f"Country: {result['country']}")
+    print(f"Country Code: {result['country_code']}")
+    print(f"Source: {result['source']}")
+else:
+    print("Location not found for coordinates")
 ```
 
 ### Error Handling

@@ -12,6 +12,23 @@
 # Example: /var/log/asl_weather.log or /home/user/.asl_weather.log
 # log_file = /var/log/asl_weather.log
 
+# Optional: Announce the current time before the weather
+# When set to true, the current time will be announced before the weather information
+# Example: true or false (default: false)
+# say_time = false
+
+# Optional: Announce the current date before the weather
+# When set to true, the current date will be announced before the weather information
+# Example: true or false (default: false)
+# say_date = false
+
+# Optional: Timezone for time announcements
+# When say_time is enabled, this specifies the timezone to use
+# Accepts IANA timezone names (e.g., America/Toronto, America/New_York, UTC)
+# If not specified, system local time is used
+# Example: America/Toronto
+# timezone = America/Toronto
+
 [location]
 # Postal code or ZIP code for weather lookup
 # Examples: N6A 3K7 (Canada), 90210 (USA), SW1A 1AA (UK)
@@ -55,4 +72,4 @@ node_number = 12345
 # Note: The voice file must be installed on the system, otherwise the default voice will be used.
 #       You can find available voices in the /var/lib/piper-tts/ directory
 #       Using medium or high quality voices, is NOT recommended, as per asl-tts documentation.
-voice = en_GB-alan-low.onnx
+#voice = en_GB-alan-low.onnx

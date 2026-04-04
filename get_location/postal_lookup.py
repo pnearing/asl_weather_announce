@@ -5,6 +5,11 @@ This module provides the main PostalLookup class for performing postal code look
 using multiple geocoding services with comprehensive error handling.
 """
 
+__version__ = "1.0.0"
+__author__ = "Peter Neearing"
+__email__ = "me@peternearing.ca"
+
+
 import json
 import logging
 import os
@@ -51,7 +56,7 @@ class PostalLookup:
         self,
         *,
         timeout: float = 10.0,
-        user_agent: str = "postal-lookup/1.0 (contact: me@peternearing.ca.)",
+        user_agent: str = f"postal-lookup/{__version__} (contact: {__author__} [<{__email__}>])",
         logger: Optional[logging.Logger] = None,
     ):
         """
@@ -237,7 +242,7 @@ class PostalLookup:
         try:
             z_result = self._lookup_zippopotam(session, postal_code, country_code, request_timeout)
             if z_result is not None:
-                self.logger.info(f"Zippopotam.us lookup successful: {z_result}")
+                self.logger.debug(f"Zippopotam.us lookup successful: {z_result}")
                 self._cache[cache_key] = z_result
                 self._save_cache()
                 return z_result
@@ -251,7 +256,7 @@ class PostalLookup:
         try:
             n_result = self._lookup_nominatim(session, postal_code, country_code, request_timeout)
             if n_result is not None:
-                self.logger.info(f"Nominatim lookup successful: {n_result}")
+                self.logger.debug(f"Nominatim lookup successful: {n_result}")
                 self._cache[cache_key] = n_result
                 self._save_cache()
                 return n_result
@@ -721,7 +726,7 @@ class PostalLookup:
             "longitude": lon,
             "source": "nominatim_reverse",
         }
-        self.logger.info(f"Reverse lookup successful: {result}")
+        self.logger.debug(f"Reverse lookup successful: {result}")
         self._cache[cache_key] = result
         self._save_cache()
         return result
