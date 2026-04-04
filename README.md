@@ -1,6 +1,6 @@
 # ASL Weather Announce
 
-A Python-based weather announcement system for [AllStarLinkv3](https://www.allstarlink.org/) (ASLv3) amateur radio networks. Fetches current weather conditions and broadcasts spoken weather reports through ASL nodes using text-to-speech.
+A Python-based weather announcement system for [AllStarLinkv3](https://www.allstarlink.org/) (ASLv3) amateur radio networks. Fetches current weather conditions and broadcasts spoken weather reports through ASL nodes using text-to-speech. This has been tested on AllStarLink V3.1.2, running Debian Trixie.
 
 ## Features
 
