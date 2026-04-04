@@ -5,8 +5,11 @@ This module provides the main PostalLookup class for performing postal code look
 using multiple geocoding services with comprehensive error handling.
 """
 
+import json
 import logging
+import os
 import requests
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 from .exceptions import (
@@ -29,6 +32,7 @@ class PostalLookup:
         timeout (float): Default timeout for requests in seconds
         user_agent (str): Default user agent for HTTP requests
         logger (logging.Logger): Logger instance for debugging
+        _cache (dict): In-memory cache of lookup results
         
     Example:
         >>> lookup = PostalLookup()
@@ -61,10 +65,58 @@ class PostalLookup:
         self.timeout = timeout
         self.user_agent = user_agent
         self.logger = logger or logging.getLogger(__name__)
+        self._cache: Dict[str, Optional[Dict[str, Any]]] = {}
+        self._cache_dir = self._get_cache_dir()
+        self._cache_file = Path(os.path.join(self._cache_dir, "postal_cache.json"))
+        
+        # Load existing cache from disk
+        self._load_cache()
         
         # Set up default logging - can be overridden by importing package
         if not self.logger.handlers:
             self.logger.addHandler(logging.NullHandler())
+    
+    @staticmethod
+    def _get_cache_dir() -> Path:
+        """
+        Determine the appropriate cache directory based on user privileges.
+        
+        Returns:
+            Path: Cache directory path
+        """
+        if os.geteuid() == 0:  # Running as root
+            return Path(os.path.join("/", "var", "cache", "asl_weather_announce"))
+        else:
+            return Path(os.path.join(Path.home(), ".cache", "asl_weather_announce"))
+    
+    def _load_cache(self) -> None:
+        """
+        Load cache from disk if it exists.
+        """
+        try:
+            if self._cache_file.exists():
+                with open(self._cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        self._cache = data
+                        self.logger.debug(f"Loaded {len(self._cache)} entries from cache file")
+                    else:
+                        self.logger.warning("Cache file contains invalid data, starting fresh")
+        except (json.JSONDecodeError, OSError) as e:
+            self.logger.debug(f"Could not load cache file: {e}")
+            self._cache = {}
+    
+    def _save_cache(self) -> None:
+        """
+        Save current cache to disk.
+        """
+        try:
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
+            with open(self._cache_file, "w", encoding="utf-8") as f:
+                json.dump(self._cache, f, indent=2)
+            self.logger.debug(f"Saved {len(self._cache)} entries to cache file")
+        except OSError as e:
+            self.logger.debug(f"Could not save cache file: {e}")
     
     def lookup(
         self,
@@ -161,6 +213,12 @@ class PostalLookup:
         postal_code = postal_code.strip()
         country_code = normalized_country
         
+        # Check cache for existing result
+        cache_key = f"{postal_code.upper()}:{country_code.upper()}"
+        if cache_key in self._cache:
+            self.logger.debug(f"Cache hit for '{cache_key}'")
+            return self._cache[cache_key]
+        
         self.logger.debug(
             f"Normalized inputs - postal_code: '{postal_code}', country_code: '{country_code}'"
         )
@@ -180,6 +238,8 @@ class PostalLookup:
             z_result = self._lookup_zippopotam(session, postal_code, country_code, request_timeout)
             if z_result is not None:
                 self.logger.info(f"Zippopotam.us lookup successful: {z_result}")
+                self._cache[cache_key] = z_result
+                self._save_cache()
                 return z_result
             else:
                 self.logger.debug("Zippopotam.us lookup failed, trying Nominatim...")
@@ -192,6 +252,8 @@ class PostalLookup:
             n_result = self._lookup_nominatim(session, postal_code, country_code, request_timeout)
             if n_result is not None:
                 self.logger.info(f"Nominatim lookup successful: {n_result}")
+                self._cache[cache_key] = n_result
+                self._save_cache()
                 return n_result
             else:
                 self.logger.debug("Nominatim lookup failed")
@@ -202,6 +264,8 @@ class PostalLookup:
         self.logger.warning(
             f"No location found for postal code '{postal_code}' in country '{country_code}'"
         )
+        self._cache[cache_key] = None
+        self._save_cache()
         return None
     
     def _lookup_zippopotam(
@@ -490,3 +554,174 @@ class PostalLookup:
             return result
         except (TypeError, ValueError):
             return None
+
+    def reverse_lookup(
+        self,
+        latitude: float,
+        longitude: float,
+        *,
+        timeout: Optional[float] = None,
+        user_agent: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Perform reverse geocoding to get location name from coordinates.
+        
+        Uses Nominatim OpenStreetMap API to look up the city, state/province,
+        and country from a given latitude and longitude.
+        
+        Args:
+            latitude: Decimal latitude (-90 to 90)
+            longitude: Decimal longitude (-180 to 180)
+            timeout: Optional timeout override for this request
+            user_agent: Optional user agent override for this request
+            
+        Returns:
+            Dictionary with location data or None if not found:
+            {
+                "city": str or None,
+                "state_province": str or None,
+                "country": str or None,
+                "country_code": str or None,
+                "latitude": float,
+                "longitude": float,
+                "source": "nominatim_reverse"
+            }
+            
+        Raises:
+            ValueError: If coordinates are invalid
+            NetworkError: Network connectivity issues
+            RateLimitError: API rate limiting
+            APIResponseError: Invalid API responses
+            
+        Example:
+            >>> lookup = PostalLookup()
+            >>> result = lookup.reverse_lookup(43.6532, -79.3832)
+            >>> print(result['city'])  # 'Old Toronto'
+            >>> print(result['state_province'])  # 'Ontario'
+        """
+        request_timeout = timeout if timeout is not None else self.timeout
+        request_user_agent = user_agent if user_agent is not None else self.user_agent
+        
+        # Validate coordinates
+        try:
+            lat = float(latitude)
+            lon = float(longitude)
+        except (TypeError, ValueError) as e:
+            self.logger.error(f"Invalid coordinates: latitude={latitude}, longitude={longitude}")
+            raise ValueError(f"latitude and longitude must be numeric: {e}")
+        
+        if not (-90 <= lat <= 90):
+            raise ValueError(f"latitude must be between -90 and 90 (got {lat})")
+        if not (-180 <= lon <= 180):
+            raise ValueError(f"longitude must be between -180 and 180 (got {lon})")
+        
+        self.logger.debug(f"Starting reverse lookup for: lat={lat}, lon={lon}")
+        
+        # Check cache for existing result
+        cache_key = f"reverse:{lat:.6f}:{lon:.6f}"
+        if cache_key in self._cache:
+            self.logger.debug(f"Cache hit for '{cache_key}'")
+            return self._cache[cache_key]
+        
+        # Create session for this request
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": request_user_agent,
+            "Accept": "application/json",
+        })
+        
+        # Use Nominatim reverse geocoding
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "format": "jsonv2",
+            "addressdetails": 1,
+        }
+        
+        self.logger.debug(f"Nominatim reverse URL: {url}")
+        self.logger.debug(f"Nominatim params: {params}")
+        
+        try:
+            self.logger.debug(f"Making GET request to Nominatim with timeout {request_timeout}s")
+            resp = session.get(url, params=params, timeout=request_timeout)
+            self.logger.debug(f"Nominatim response status: {resp.status_code}")
+            
+            if resp.status_code == 404:
+                self.logger.debug(f"Nominatim: Location not found for coordinates ({lat}, {lon})")
+                self._cache[cache_key] = None
+                self._save_cache()
+                return None
+            elif resp.status_code == 429:
+                self.logger.error(f"Nominatim: Rate limit exceeded (429)")
+                raise RateLimitError(f"Rate limit exceeded for Nominatim API")
+            elif resp.status_code == 403:
+                self.logger.error(f"Nominatim: Access forbidden (403) - likely rate limiting")
+                raise RateLimitError(f"Access forbidden for Nominatim API - likely rate limiting")
+            elif resp.status_code >= 500:
+                self.logger.error(f"Nominatim: Server error {resp.status_code}")
+                raise APIResponseError(f"Nominatim server error: {resp.status_code}")
+            
+            resp.raise_for_status()
+            
+            try:
+                data = resp.json()
+            except ValueError as e:
+                self.logger.error(f"Nominatim: Invalid JSON response: {e}")
+                raise APIResponseError(f"Invalid JSON response from Nominatim: {e}")
+            
+            self.logger.debug(f"Nominatim response data: {data}")
+        except requests.exceptions.Timeout as e:
+            self.logger.error(f"Nominatim: Request timeout after {request_timeout}s: {e}")
+            raise NetworkError(f"Request timeout to Nominatim: {e}")
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(f"Nominatim: Connection error: {e}")
+            raise NetworkError(f"Connection error to Nominatim: {e}")
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Nominatim: Network request failed: {e}")
+            raise NetworkError(f"Network error accessing Nominatim: {e}")
+        
+        # Check if we got a valid result
+        if not data or "error" in data:
+            self.logger.debug(f"Nominatim: No result found for coordinates ({lat}, {lon})")
+            self._cache[cache_key] = None
+            self._save_cache()
+            return None
+        
+        address = data.get("address", {})
+        self.logger.debug(f"Address details: {address}")
+        
+        # Extract city name from various possible field names in address hierarchy
+        city = (
+            address.get("city")
+            or address.get("town")
+            or address.get("village")
+            or address.get("municipality")
+            or address.get("hamlet")
+            or address.get("suburb")
+            or address.get("county")
+        )
+        self.logger.debug(f"Extracted city: '{city}'")
+        
+        # Extract state/province from various possible field names
+        state_province = (
+            address.get("state")
+            or address.get("province")
+            or address.get("region")
+            or address.get("state_district")
+        )
+        self.logger.debug(f"Extracted state_province: '{state_province}'")
+        
+        result = {
+            "city": city,
+            "state_province": state_province,
+            "country": address.get("country"),
+            "country_code": address.get("country_code", "").upper() or None,
+            "latitude": lat,
+            "longitude": lon,
+            "source": "nominatim_reverse",
+        }
+        self.logger.info(f"Reverse lookup successful: {result}")
+        self._cache[cache_key] = result
+        self._save_cache()
+        return result

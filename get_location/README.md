@@ -11,7 +11,8 @@ A Python module for postal code to location lookup using multiple geocoding serv
 - **Coordinate Validation**: Safe conversion and validation of latitude/longitude data
 - **Flexible Input**: Handles various postal code formats and country codes
 - **Rate Limiting Awareness**: Built-in handling for API rate limits
-- **No API Keys Required**: Uses free public APIs
+- **Intelligent Caching**: Both in-memory and persistent disk caching to minimize API calls and improve performance
+- **Automatic Cache Management**: Cache stored in appropriate system locations based on user privileges
 
 ## Installation
 
@@ -328,18 +329,75 @@ The module provides granular error handling for different failure scenarios:
 - **Nominatim**: Recommend 1 request/second maximum
 - **Batch operations**: Include delays between requests
 
-### Caching
+The module includes a sophisticated caching system to reduce API calls and improve performance:
 
-For production use, consider implementing caching to reduce API calls:
+### Caching Strategy
+
+- **Two-tier caching**: In-memory cache for speed, disk persistence for survival across restarts
+- **Automatic cache location**:
+  - Root users: `/var/cache/asl_weather_announce/postal_cache.json`
+  - Regular users: `$HOME/.cache/asl_weather_announce/postal_cache.json`
+- **Negative caching**: Failed lookups are cached to avoid repeated API calls for invalid postal codes
+- **Cache persistence**: Cache is automatically saved to disk after each successful lookup
+
+### Cache Behavior
 
 ```python
-import functools
-import time
+from get_location import PostalLookup
 
-@functools.lru_cache(maxsize=1000)
-def cached_lookup(postal_code, country):
-    lookup = PostalLookup()
-    return lookup.lookup(postal_code, country)
+# First lookup - hits the API
+lookup = PostalLookup()
+result1 = lookup.lookup("90210", "US")  # API call made
+
+# Second lookup - served from cache
+result2 = lookup.lookup("90210", "US")  # No API call, instant result
+```
+
+### Manual Cache Management
+
+The cache is automatically managed, but you can check cache status via logging:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+lookup = PostalLookup(logger=logger)
+# Cache operations will be logged
+```
+
+### Cache File Location
+
+The cache directory is automatically determined based on the running user's privileges:
+
+- **Running as root**: Uses system-wide cache at `/var/cache/asl_weather_announce/`
+- **Running as regular user**: Uses user cache at `$HOME/.cache/asl_weather_announce/`
+
+This ensures proper permissions and separation between system-wide and per-user installations.
+
+### Clearing the Cache
+
+To clear the cache, simply delete the cache file:
+
+```bash
+# As root
+rm /var/cache/asl_weather_announce/postal_cache.json
+
+# As regular user
+rm ~/.cache/asl_weather_announce/postal_cache.json
+```
+
+Or in Python:
+
+```python
+import os
+from pathlib import Path
+
+# Clear cache file (if needed)
+cache_file = Path.home() / ".cache" / "asl_weather_announce" / "postal_cache.json"
+if cache_file.exists():
+    os.remove(cache_file)
 ```
 
 ## Advanced Usage

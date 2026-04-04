@@ -28,17 +28,20 @@ Configuration:
 
 import argparse
 import configparser
+import logging
 import os
 import shutil
 import subprocess
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from get_location import PostalLookup, PostalLookupError, NetworkError, normalize_country_code
 from get_weather import get_current_weather, WeatherLookupError, NetworkError
 
 DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
 DEFAULT_CONFIG_PATH = "/etc/asl_weather.conf"
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
 
 def check_root_privileges() -> None:
@@ -57,12 +60,12 @@ def check_root_privileges() -> None:
     current_user = pwd.getpwuid(current_uid).pw_name
     
     if current_uid != 0 and current_user != "asterisk":
-        print("Error: This script must be run as root or the asterisk user.", file=sys.stderr)
-        print("Please run with: sudo python main.py", file=sys.stderr)
+        logging.error("This script must be run as root or the asterisk user.")
+        logging.error("Please run with: sudo python main.py")
         sys.exit(1)
 
 
-def check_dependencies() -> None:
+def check_dependencies(no_tts: bool = False) -> None:
     """
     Verify all required dependencies are installed.
     
@@ -91,21 +94,62 @@ def check_dependencies() -> None:
     
     # Check system binaries
     missing_binaries = []
-    if not shutil.which("asl-tts"):
+    if not no_tts and not shutil.which("asl-tts"):
         missing_binaries.append("asl-tts")
     
     if missing_modules or missing_binaries:
-        print("Error: Missing required dependencies:", file=sys.stderr)
+        logging.error("Missing required dependencies:")
         for package in missing_modules:
-            print(f"  - {package} (Python module)", file=sys.stderr)
+            logging.error(f"  - {package} (Python module)")
         for binary in missing_binaries:
-            print(f"  - {binary} (system binary)", file=sys.stderr)
+            logging.error(f"  - {binary} (system binary)")
         
         if missing_modules:
-            print(f"\nInstall Python modules with: pip install {' '.join(missing_modules)}", file=sys.stderr)
+            logging.error(f"Install Python modules with: pip install {' '.join(missing_modules)}")
         if missing_binaries:
-            print(f"\nInstall system binaries with: sudo apt install {' '.join(missing_binaries)}", file=sys.stderr)
+            logging.error(f"Install system binaries with: sudo apt install {' '.join(missing_binaries)}")
         sys.exit(1)
+
+
+def validate_coordinates(latitude: Any, longitude: Any) -> tuple[float, float]:
+    """
+    Validate and sanitize latitude and longitude coordinates.
+    
+    Args:
+        latitude: Latitude value (string or numeric, -90 to 90)
+        longitude: Longitude value (string or numeric, -180 to 180)
+        
+    Returns:
+        Tuple of (sanitized_latitude, sanitized_longitude) as floats.
+        
+    Raises:
+        ValueError: If coordinates are invalid with descriptive message.
+    """
+    try:
+        # Convert to float and strip whitespace if string
+        if isinstance(latitude, str):
+            lat = float(latitude.strip())
+        else:
+            lat = float(latitude)
+            
+        if isinstance(longitude, str):
+            lon = float(longitude.strip())
+        else:
+            lon = float(longitude)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"latitude and longitude must be valid numeric values: {e}")
+    
+    # Validate ranges
+    if not (-90 <= lat <= 90):
+        raise ValueError(f"latitude must be between -90 and 90 (got {lat})")
+    if not (-180 <= lon <= 180):
+        raise ValueError(f"longitude must be between -180 and 180 (got {lon})")
+    
+    # Round to 6 decimal places for precision (approximately 0.1m at equator)
+    lat = round(lat, 6)
+    lon = round(lon, 6)
+    
+    return lat, lon
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -166,6 +210,12 @@ Examples:
     )
     
     parser.add_argument(
+        "-l", "--log-file",
+        type=str,
+        help="Path to log file (logs to file instead of terminal)"
+    )
+    
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the announcement text instead of sending it to asl-tts"
@@ -198,9 +248,13 @@ def load_config(config_path: str) -> Dict[str, Any]:
     config = {
         "postal_code": None,
         "country_code": None,
+        "latitude": None,
+        "longitude": None,
+        "location_name": None,
         "node_number": None,
         "voice": None,
         "voice_dir": DEFAULT_VOICE_DIR,
+        "log_file": None,
     }
     
     if not os.path.exists(config_path):
@@ -211,8 +265,13 @@ def load_config(config_path: str) -> Dict[str, Any]:
     try:
         parser.read(config_path)
     except configparser.Error as e:
-        print(f"Error: Invalid configuration file format: {e}", file=sys.stderr)
+        logging.error(f"Invalid configuration file format: {e}")
         sys.exit(1)
+    
+    # Read asl_weather section
+    if parser.has_section("asl_weather"):
+        if parser.has_option("asl_weather", "log_file"):
+            config["log_file"] = parser.get("asl_weather", "log_file").strip()
     
     # Read location section
     if parser.has_section("location"):
@@ -220,6 +279,18 @@ def load_config(config_path: str) -> Dict[str, Any]:
             config["postal_code"] = parser.get("location", "postal_code").strip()
         if parser.has_option("location", "country_code"):
             config["country_code"] = parser.get("location", "country_code").strip()
+        if parser.has_option("location", "latitude"):
+            lat_val = parser.get("location", "latitude").strip()
+            if lat_val:
+                config["latitude"] = lat_val
+        if parser.has_option("location", "longitude"):
+            lon_val = parser.get("location", "longitude").strip()
+            if lon_val:
+                config["longitude"] = lon_val
+        if parser.has_option("location", "location_name"):
+            loc_name = parser.get("location", "location_name").strip()
+            if loc_name:
+                config["location_name"] = loc_name
     
     # Read ASL section
     if parser.has_section("asl"):
@@ -227,7 +298,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
             try:
                 config["node_number"] = int(parser.get("asl", "node_number").strip())
             except ValueError:
-                print(f"Error: Invalid node number in config file: {parser.get('asl', 'node_number')}", file=sys.stderr)
+                logging.error(f"Invalid node number in config file: {parser.get('asl', 'node_number')}")
                 sys.exit(1)
     
     # Read asl-tts section
@@ -237,7 +308,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         if parser.has_option("asl-tts", "voice_dir"):
             config["voice_dir"] = parser.get("asl-tts", "voice_dir").strip()
             if not os.path.isdir(config["voice_dir"]):
-                print(f"Error: Voice directory does not exist: {config['voice_dir']}", file=sys.stderr)
+                logging.error(f"Voice directory does not exist: {config['voice_dir']}")
                 sys.exit(1)
     
     return config
@@ -248,6 +319,9 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
     Resolve final configuration by combining CLI arguments and config file.
     
     CLI arguments take precedence over config file values.
+    
+    If latitude and longitude are provided in the config file, they override
+    the postal_code/country_code lookup and skip directly to weather lookup.
     
     Args:
         cli_args: Parsed command line arguments.
@@ -264,44 +338,69 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
     config = {
         "postal_code": cli_args.postal_code or file_config["postal_code"],
         "country_code": cli_args.country_code or file_config["country_code"],
+        "latitude": file_config["latitude"],
+        "longitude": file_config["longitude"],
+        "location_name": file_config["location_name"],
         "node_number": cli_args.node_number or file_config["node_number"],
         "voice": cli_args.voice or file_config["voice"],
+        "voice_dir": file_config["voice_dir"],
+        "log_file": cli_args.log_file or file_config["log_file"],
     }
     
-    # Validate required values
-    if not config["postal_code"]:
-        print("Error: postal_code is required. Provide via --postal-code(-p) or config file.", file=sys.stderr)
-        print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
-        print("\nExample config file format:", file=sys.stderr)
-        print("[location]", file=sys.stderr)
-        print("postal_code = N6A 3K7", file=sys.stderr)
-        print("country_code = CA", file=sys.stderr)
-        sys.exit(1)
+    # Check if latitude/longitude override is provided
+    lat_lon_override = config["latitude"] is not None and config["longitude"] is not None
     
-    if not config["country_code"]:
-        print("Error: country_code is required. Provide via --country-code(-c) or config file.", file=sys.stderr)
-        print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Normalize country code to 2-letter ISO format
-    normalized_country = normalize_country_code(config["country_code"])
-    if normalized_country is None:
-        print(f"Error: Invalid country_code '{config['country_code']}'.", file=sys.stderr)
-        print("Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States).", file=sys.stderr)
-        print("Examples: CA, CAN, 124, Canada", file=sys.stderr)
-        sys.exit(1)
-    
-    config["country_code"] = normalized_country
+    if lat_lon_override:
+        # Validate and sanitize coordinates
+        try:
+            lat, lon = validate_coordinates(config["latitude"], config["longitude"])
+            config["latitude"] = lat
+            config["longitude"] = lon
+            logger = logging.getLogger(__name__)
+            logger.info(f"Using configured coordinates: latitude={lat}, longitude={lon}")
+        except ValueError as e:
+            logging.error(f"Invalid coordinates in config file: {e}")
+            logging.error(f"Config file location: {cli_args.config}")
+            logging.error("Example format:")
+            logging.error("[location]")
+            logging.error("latitude = 43.6532")
+            logging.error("longitude = -79.3832")
+            sys.exit(1)
+    else:
+        # Validate required postal_code/country_code since no lat/lon override
+        if not config["postal_code"]:
+            logging.error("postal_code is required. Provide via --postal-code(-p) or config file.")
+            logging.error(f"Config file location: {cli_args.config}")
+            logging.error("Example config file format:")
+            logging.error("[location]")
+            logging.error("postal_code = N6A 3K7")
+            logging.error("country_code = CA")
+            sys.exit(1)
+        
+        if not config["country_code"]:
+            logging.error("country_code is required. Provide via --country-code(-c) or config file.")
+            logging.error(f"Config file location: {cli_args.config}")
+            sys.exit(1)
+        
+        # Normalize country code to 2-letter ISO format
+        normalized_country = normalize_country_code(config["country_code"])
+        if normalized_country is None:
+            logging.error(f"Invalid country_code '{config['country_code']}'.")
+            logging.error("Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States).")
+            logging.error("Examples: CA, CAN, 124, Canada")
+            sys.exit(1)
+        
+        config["country_code"] = normalized_country
     
     if not config["node_number"]:
-        print("Error: node_number is required. Provide via --node-number(-n) or config file.", file=sys.stderr)
-        print(f"\nConfig file location: {cli_args.config}", file=sys.stderr)
+        logging.error("node_number is required. Provide via --node-number(-n) or config file.")
+        logging.error(f"Config file location: {cli_args.config}")
         sys.exit(1)
     
     return config
 
 
-def get_location(postal_code: str, country_code: str) -> Dict[str, Any]:
+def get_location(postal_code: str, country_code: str, logger: Optional[logging.Logger]) -> Dict[str, Any]:
     """
     Look up location information from postal code and country code.
     
@@ -324,25 +423,25 @@ def get_location(postal_code: str, country_code: str) -> Dict[str, Any]:
         SystemExit: If location lookup fails.
     """
     
-    lookup = PostalLookup()
+    lookup = PostalLookup(logger=logger)
     
     try:
         result = lookup.lookup(postal_code, country_code)
     except NetworkError as e:
-        print(f"Error: Network error during location lookup: {e}", file=sys.stderr)
+        logger.error(f"Network error during location lookup: {e}")
         sys.exit(1)
     except PostalLookupError as e:
-        print(f"Error: Location lookup failed: {e}", file=sys.stderr)
+        logger.error(f"Location lookup failed: {e}")
         sys.exit(1)
     
     if result is None:
-        print(f"Error: Could not find location for postal code '{postal_code}' in country '{country_code}'", file=sys.stderr)
+        logger.error(f"Could not find location for postal code '{postal_code}' in country '{country_code}'")
         sys.exit(1)
     
     return result
 
 
-def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C") -> Any:
+def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C", logger: Optional[logging.Logger] = None) -> Any:
     """
     Fetch current weather for the given location.
     
@@ -374,13 +473,13 @@ def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C") -> A
             temperature_unit=temperature_unit
         )
     except NetworkError as e:
-        print(f"Error: Network error during weather lookup: {e}", file=sys.stderr)
+        logger.error(f"Network error during weather lookup: {e}")
         sys.exit(1)
     except WeatherLookupError as e:
-        print(f"Error: Weather lookup failed: {e}", file=sys.stderr)
+        logger.error(f"Weather lookup failed: {e}")
         sys.exit(1)
     except ValueError as e:
-        print(f"Error: Invalid parameters for weather lookup: {e}", file=sys.stderr)
+        logger.error(f"Invalid parameters for weather lookup: {e}")
         sys.exit(1)
     
     return result
@@ -393,34 +492,120 @@ def main() -> int:
     Returns:
         Exit code: 0 on success, non-zero on failure.
     """
-    # Parse CLI arguments
+    # Parse CLI arguments first
     cli_args = parse_arguments()
     
-    # Check root privileges
-    check_root_privileges()
+    # Configure logging based on CLI args
+    if cli_args.log_file:
+        # Log to file only (not terminal)
+        logging.basicConfig(
+            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.FileHandler(cli_args.log_file)
+            ]
+        )
+    else:
+        # Log to terminal (default)
+        logging.basicConfig(
+            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+    logger = logging.getLogger(__name__)
+    
+    # Check root privileges, unless running in dry run mode
+    if not cli_args.dry_run:
+        check_root_privileges()
+        
     
     # Verify dependencies are installed
-    check_dependencies()
+    if cli_args.dry_run:
+        # In dry run mode, we only need python dependencies, not the tts engine.
+        check_dependencies(no_tts=True)
+    else:
+        check_dependencies()
     
     # Resolve configuration (CLI overrides config file)
     config = resolve_configuration(cli_args)
+    
+    # Reconfigure logging if log_file is specified in config
+    if config['log_file'] and not cli_args.log_file:
+        # Reconfigure to log to file
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        logging.basicConfig(
+            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.FileHandler(config['log_file'])
+            ]
+        )
     
     # Check if the voice exists
     if config['voice']:
         voice_file_path = os.path.join(config['voice_dir'], config['voice'])
         if not os.path.exists(voice_file_path) and not os.path.exists(f"{voice_file_path}.json"):
-            print(f"Error: Voice '{config['voice']}' not found in {config['voice_dir']}, using default voice.", file=sys.stderr)
+            logger.warning(f"Voice '{config['voice']}' not found in {config['voice_dir']}, using default voice.")
             config['voice'] = None
 
-    # Get location data from postal code
-    location_data = get_location(config["postal_code"], config["country_code"])
-    
+    # Determine if we're using lat/lon override
+    use_lat_lon_override = config.get("latitude") is not None and config.get("longitude") is not None
+
+    if use_lat_lon_override:
+        # Check if location_name is provided (skips reverse lookup)
+        if config.get("location_name"):
+            # Parse location_name - can be "City, State" or just "City"
+            loc_parts = config["location_name"].split(",", 1)
+            city = loc_parts[0].strip()
+            state_province = loc_parts[1].strip() if len(loc_parts) > 1 else None
+            
+            location_data = {
+                "city": city,
+                "state_province": state_province,
+                "country": None,
+                "latitude": config["latitude"],
+                "longitude": config["longitude"],
+            }
+            logger.info(f"Using configured location name: {config['location_name']}")
+        else:
+            # Use configured coordinates and perform reverse lookup to get location name
+            lookup = PostalLookup(logger=logger)
+            try:
+                location_data = lookup.reverse_lookup(config["latitude"], config["longitude"])
+                if location_data is None:
+                    logger.warning("Reverse geocoding returned no results, using generic location name")
+                    location_data = {
+                        "city": "Configured Location",
+                        "state_province": None,
+                        "country": None,
+                        "latitude": config["latitude"],
+                        "longitude": config["longitude"],
+                    }
+                else:
+                    # Ensure coordinates from config are preserved (reverse lookup may have slightly different values)
+                    location_data["latitude"] = config["latitude"]
+                    location_data["longitude"] = config["longitude"]
+                    logger.info(f"Resolved location from coordinates: {location_data['city']}, {location_data.get('state_province')}")
+            except PostalLookupError as e:
+                logger.warning(f"Reverse geocoding failed: {e}, using generic location name")
+                location_data = {
+                    "city": "Configured Location",
+                    "state_province": None,
+                    "country": None,
+                    "latitude": config["latitude"],
+                    "longitude": config["longitude"],
+                }
+        
+    else:
+        # Get location data from postal code
+        location_data = get_location(config["postal_code"], config["country_code"], logger=logger)
+        
     # Clean up city name for TTS (remove parenthetical content like "(UWO)" from "London North (UWO)")
     if location_data.get("city"):
         location_data["city"] = location_data["city"].split("(")[0].strip()
     
     # Get current weather for the location
-    weather = get_weather(location_data)
+    weather = get_weather(location_data, logger=logger)
     
     # Build announcement text
     announcement = weather.natural_language()
@@ -442,7 +627,7 @@ def main() -> int:
     try:
         subprocess.check_call(asl_tts_cmd)
     except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to send announcement to asl-tts: {e}", file=sys.stderr)
+        logger.error(f"Failed to send announcement to asl-tts: {e}")
         sys.exit(1)
     
     return 0

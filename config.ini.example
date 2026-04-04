@@ -6,14 +6,41 @@
 # The main.py script looks for configuration at /etc/asl_weather.conf by default.
 # You can specify a custom config file using the --config command line option.
 
+[asl_weather]
+# Optional: Log file path for debug/output logging
+# When specified, logs will be written to this file instead of the terminal
+# Example: /var/log/asl_weather.log or /home/user/.asl_weather.log
+# log_file = /var/log/asl_weather.log
+
 [location]
 # Postal code or ZIP code for weather lookup
 # Examples: N6A 3K7 (Canada), 90210 (USA), SW1A 1AA (UK)
+# Note: If latitude and longitude are specified below, postal_code and country_code
+# are optional and will be ignored for location lookup.
 postal_code = N6A 3K7
 
 # 2-letter ISO country code
 # Examples: CA (Canada), US (United States), GB (United Kingdom)
+# Note: Optional if latitude and longitude are specified below.
 country_code = CA
+
+# Optional: Direct latitude and longitude specification
+# If provided, these will override postal_code/country_code lookup
+# and skip directly to weather lookup for the given coordinates.
+# Valid ranges: latitude -90 to 90, longitude -180 to 180
+# Example: latitude = 43.6532, longitude = -79.3832 (Toronto, ON)
+# Note: Values must be in decimal degrees (e.g., 43.6532, -79.3832)
+# latitude =
+# longitude =
+
+# Optional: Override the location name for TTS announcements
+# When latitude and longitude are specified above, the system normally
+# performs a reverse geocoding lookup to determine the city name for the
+# announcement. If you want to skip this lookup and specify the location
+# name directly, set this option.
+# Example: location_name = Toronto, Ontario
+# Note: Only used when latitude and longitude are configured.
+# location_name =
 
 [asl]
 # ASL (AllStarLink) node number
