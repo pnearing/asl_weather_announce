@@ -206,7 +206,7 @@ print(f"Current data: {raw_data.get('current', {})}")
 The module uses World Meteorological Organization (WMO) weather codes:
 
 | Code Range | Description |
-|------------|-------------|
+| ------------ | ------------- |
 | 0-3 | Cloud cover (clear to overcast) |
 | 45, 48 | Fog |
 | 51-55 | Drizzle (light to dense) |
@@ -231,7 +231,7 @@ print(weather_code_to_description(95))  # "with a thunderstorm"
 ## API Information
 
 - **Service**: Open-Meteo Weather API
-- **Endpoint**: https://api.open-meteo.com/v1/forecast
+- **Endpoint**: [https://api.open-meteo.com/v1/forecast](https://api.open-meteo.com/v1/forecast)
 - **Authentication**: None (free public API)
 - **Rate Limits**: None specified (reasonable usage expected)
 - **Data Source**: European Centre for Medium-Range Weather Forecasts (ECMWF)
