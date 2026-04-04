@@ -11,7 +11,7 @@ Rules-Requires-Root: no
 
 Package: asl-weather-announce
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends}, python3-requests, asl-tts
+Depends: ${python3:Depends}, ${misc:Depends}, python3-requests, asl3-tts
 Recommends: python3-zoneinfo | python3 (>= 3.9)
 Description: Weather announcement system for AllStarLink amateur radio
  ASL Weather Announce is a Python-based weather announcement system

@@ -3,17 +3,30 @@
 PACKAGE_NAME = asl-weather-announce
 VERSION = $(shell dpkg-parsechangelog -S Version 2>/dev/null || echo "1.0.0")
 
+# Prevent recursive calls during debhelper builds
+ifeq ($(DEB_BUILD_OPTIONS),)
+  IS_TOP_LEVEL = yes
+endif
+
 .PHONY: all build clean install deb source release
 
 all: deb
 
-# Build the Debian package
+# Build the Debian package (only at top level)
 build:
+ifeq ($(IS_TOP_LEVEL),yes)
 	dpkg-buildpackage -us -uc -b
+else
+	@echo "Skipping recursive build during debhelper"
+endif
 
 # Build Debian package (same as build)
 deb:
+ifeq ($(IS_TOP_LEVEL),yes)
 	dpkg-buildpackage -us -uc -b
+else
+	@echo "Skipping recursive deb during debhelper"
+endif
 
 # Create source tarball
 source:
