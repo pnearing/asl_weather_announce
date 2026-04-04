@@ -66,22 +66,22 @@ jobs:
           # Build the package
           dpkg-buildpackage -us -uc -b
           # Move built packages to a known location
-          mkdir -p ../artifacts
-          mv ../*.deb ../artifacts/
-          mv ../*.changes ../artifacts/ 2>/dev/null || true
-          mv ../*.buildinfo ../artifacts/ 2>/dev/null || true
+          mkdir -p ./artifacts
+          mv ../*.deb ./artifacts/
+          mv ../*.changes ./artifacts/ 2>/dev/null || true
+          mv ../*.buildinfo ./artifacts/ 2>/dev/null || true
 
       - name: Show built packages
         run: |
-          ls -la ../artifacts/
-          dpkg-deb -I ../artifacts/*.deb || true
+          ls -la ./artifacts/
+          dpkg-deb -I ./artifacts/*.deb || true
 
       - name: Create source tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           # Create source tarball
           cd ..
-          tar czf "artifacts/asl-weather-announce_${VERSION}.orig.tar.gz" \
+          tar czf "asl_weather_announce/artifacts/asl-weather-announce_${VERSION}.orig.tar.gz" \
             --exclude='.git' \
             --exclude='.forgejo' \
             --exclude='.github' \
@@ -97,7 +97,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debian-packages
-          path: ../artifacts/*
+          path: artifacts/*
           if-no-files-found: error
 
   release:
