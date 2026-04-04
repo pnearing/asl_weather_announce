@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export DH_OPTIONS = -v
+
+%:
+	dh $@ --with python3
+
+override_dh_auto_install:
+	dh_auto_install
+	# Create cache directory only - files are installed via debian/install
+	install -d -m 755 debian/asl-weather-announce/var/cache/asl_weather_announce
+
+override_dh_auto_test:
+	# Skip tests during package build (optional)

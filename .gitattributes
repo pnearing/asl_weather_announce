@@ -1,0 +1,2 @@
+# Debian packaging files need to preserve their exact formatting
+debian/changelog -text

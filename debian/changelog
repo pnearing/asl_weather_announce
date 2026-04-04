@@ -1,0 +1,7 @@
+asl-weather-announce (1.0.0-1) unstable; urgency=medium
+
+  * Initial release.
+  * Debian packaging for ASL Weather Announce.
+  * Supports Debian Trixie.
+
+ -- Peter Nearing <me@peternearing.ca>  Fri, 04 Apr 2026 18:45:00 -0400

@@ -17,9 +17,24 @@ A Python-based weather announcement system for [AllStarLinkv3](https://www.allst
 
 ## Installation
 
-### Prerequisites
+### Debian Package (Recommended)
 
-- Python 3.6 or higher
+For Debian Trixie and compatible systems (Ubuntu 24.04+, etc.), install via the `.deb` package:
+
+```bash
+# Download the latest .deb from the releases page
+wget https://github.com/AllStarLink/asl_weather_announce/releases/latest/download/asl-weather-announce_*.deb
+
+# Install the package
+sudo dpkg -i asl-weather-announce_*.deb
+
+# Install any missing dependencies
+sudo apt-get install -f
+```
+
+### Manual Installation
+
+#### Prerequisites
 - Root or `asterisk` user privileges (for ASL integration)
 - `asl-tts` command-line tool for text-to-speech
 
@@ -330,6 +345,54 @@ Example:
 ```bash
 LOG_LEVEL=DEBUG sudo asl_weather --dry-run
 ```
+
+## Building from Source
+
+### Debian Package Build
+
+To build the Debian package locally:
+
+```bash
+# Install build dependencies
+sudo apt-get install build-essential debhelper debhelper-compat dh-python fakeroot python3-all python3-setuptools devscripts
+
+# Build the package
+make deb
+
+# Or use dpkg-buildpackage directly
+dpkg-buildpackage -us -uc -b
+```
+
+The built `.deb` package will be in the parent directory.
+
+### Source Archive
+
+To create a source tarball:
+
+```bash
+make source
+```
+
+## CI/CD
+
+This project uses automated CI/CD pipelines to build and release packages:
+
+### GitHub Actions
+
+The `.github/workflows/release.yml` workflow automatically:
+- Builds Debian packages for Trixie on every tag push
+- Creates source tarballs
+- Publishes releases with `.deb` and `.tar.gz` artifacts
+
+Trigger a release by pushing a tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### Forgejo
+
+The `.forgejo/workflows/release.yml` workflow provides the same functionality for Forgejo-hosted repositories.
 
 ## License
 

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# Remove cached data
+if [ -d /var/cache/asl_weather_announce ]; then
+    rm -rf /var/cache/asl_weather_announce
+fi
+
+#DEBHELPER#
+
+exit 0
