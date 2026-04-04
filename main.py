@@ -4,30 +4,90 @@ ASL Weather Announce Main Entry Point
 
 This script provides the main entry point for the ASL Weather Announce system.
 It combines postal code lookup with weather retrieval to provide current weather
-conditions for a specified location.
+conditions for a specified location, with optional text-to-speech announcements
+through AllStarLink (ASL) nodes.
 
-The script requires root privileges to run (for future ASL integration) and
-loads configuration from an INI file, with CLI overrides available.
+Features:
+    - Location lookup via postal/ZIP code or direct latitude/longitude coordinates
+    - Current weather retrieval from Open-Meteo API (no API key required)
+    - Natural language weather announcements optimized for TTS
+    - Optional date and time announcements with timezone support
+    - Configurable TTS voice selection via asl-tts
+    - Persistent disk caching for location lookups
+    - Comprehensive logging with file or console output
+    - Dry-run mode for testing without broadcasting
 
 Usage:
     sudo python main.py
     sudo python main.py --postal-code N6A3K7 --country-code CA
     sudo python main.py --config /path/to/custom.conf
+    sudo python main.py -p N6A3K7 -c CA -n 12345 --say-time --say-date
+    sudo python main.py --dry-run  # Preview announcement text only
 
 Configuration:
     Default config path: /etc/asl_weather.conf
-    
+
     Example config file:
+    [asl_weather]
+    log_file = /var/log/asl_weather.log
+    say_time = true
+    say_date = true
+    timezone = America/Toronto
+
     [location]
     postal_code = N6A 3K7
     country_code = CA
-    
+    # Optional: Use coordinates instead of postal code
+    # latitude = 43.6532
+    # longitude = -79.3832
+    # location_name = Toronto, Ontario
+
     [asl]
     node_number = 12345
+
+    [asl-tts]
+    voice = en_GB-alan-low.onnx
+    voice_dir = /var/lib/piper-tts
+
+Command Line Options:
+    -C, --config PATH         Path to configuration file (default: /etc/asl_weather.conf)
+    -p, --postal-code CODE    Postal/ZIP code to lookup (overrides config)
+    -c, --country-code CODE   Country code - accepts 2-letter (CA), 3-letter (CAN),
+                              numeric (124), or full name (Canada). Case-insensitive.
+    -n, --node-number NUM     ASL node number for broadcast (overrides config)
+    -v, --voice VOICE         TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
+    -l, --log-file PATH       Path to log file (logs to file instead of terminal)
+    -t, --say-time            Announce current time before weather (overrides config)
+    -T, --no-say-time         Do not announce current time (overrides config)
+    -d, --say-date            Announce current date before weather (overrides config)
+    -D, --no-say-date         Do not announce current date (overrides config)
+    --dry-run                 Print announcement text instead of sending to asl-tts
+
+Location Specification:
+    Locations can be specified in two ways:
+    1. Postal/ZIP code + country code (traditional method)
+       - Uses Zippopotam.us and OpenStreetMap Nominatim for lookup
+       - Results are cached to disk for performance
+    2. Direct latitude/longitude coordinates (config file only)
+       - Specify latitude and longitude in [location] section
+       - Optional location_name to skip reverse geocoding
+       - Bypasses postal code lookup entirely
+
+Dependencies:
+    - Python 3.6+
+    - requests (Python module)
+    - asl-tts (system binary for TTS/audio playback)
+    - Root or asterisk user privileges (for ASL integration)
+
+Notes:
+    - The script requires root or asterisk user privileges when not in dry-run mode
+    - Weather data is provided by Open-Meteo (free, no API key required)
+    - Location lookups are cached to reduce API calls
+    - TTS voice files must be installed in the voice directory
 """
 
 __version__ = "1.0.0"
-__author__ = "Peter Neearing"
+__author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
 

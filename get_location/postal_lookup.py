@@ -6,7 +6,7 @@ using multiple geocoding services with comprehensive error handling.
 """
 
 __version__ = "1.0.0"
-__author__ = "Peter Neearing"
+__author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
 

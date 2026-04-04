@@ -52,7 +52,7 @@ API Information:
 from __future__ import annotations
 
 __version__ = "1.0.0"
-__author__ = "Peter Neearing"
+__author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
 from dataclasses import dataclass
