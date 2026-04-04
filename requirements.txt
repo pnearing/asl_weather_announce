@@ -1,0 +1,6 @@
+# ASL Weather Announce - Runtime Requirements
+# These are the minimal dependencies required to run the application.
+# Install with: pip install -r requirements.txt
+
+# HTTP client library for API calls to Open-Meteo and geocoding services
+requests>=2.25.0

@@ -1,0 +1,18 @@
+# ASL Weather Announce - Developer Requirements
+# These include runtime dependencies plus tools for development and testing.
+# Install with: pip install -r developer_requirements.txt
+
+# Include all runtime requirements
+-r requirements.txt
+
+# Testing framework
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Code quality and formatting
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# Type stubs for dependencies
+types-requests>=2.25.0
