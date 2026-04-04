@@ -1,6 +1,6 @@
 # ASL Weather Announce
 
-A Python-based weather announcement system for [AllStarLink](https://www.allstarlink.org/) (ASL) amateur radio networks. Fetches current weather conditions and broadcasts spoken weather reports through ASL nodes using text-to-speech.
+A Python-based weather announcement system for [AllStarLinkv3](https://www.allstarlink.org/) (ASLv3) amateur radio networks. Fetches current weather conditions and broadcasts spoken weather reports through ASL nodes using text-to-speech.
 
 ## Features
 
@@ -24,6 +24,8 @@ A Python-based weather announcement system for [AllStarLink](https://www.allstar
 - `asl-tts` command-line tool for text-to-speech
 
 ### Python Dependencies
+
+Note: AllStarLink V3 systems already have Python 3.6+ and the `requests` library available.
 
 ```bash
 pip install requests
@@ -50,7 +52,7 @@ sudo apt install asl-tts  # or equivalent for your system
 
 3. **Run the script:**
    ```bash
-   sudo python main.py
+   sudo python asl_weather
    ```
 
 ## Configuration
@@ -129,10 +131,10 @@ country_code = CA  # Still used as fallback
 
 ```bash
 # Use default config file (/etc/asl_weather.conf)
-sudo python main.py
+sudo python asl_weather
 
 # Specify custom config file
-sudo python main.py --config /path/to/custom.conf
+sudo python asl_weather --config /path/to/custom.conf
 ```
 
 ### Command Line Overrides
@@ -141,16 +143,16 @@ All config file options can be overridden via command line:
 
 ```bash
 # Override location
-sudo python main.py --postal-code N6A3K7 --country-code CA
+sudo python asl_weather --postal-code N6A3K7 --country-code CA
 
 # Override node number and voice
-sudo python main.py -n 54321 -v en_US-amy-low.onnx
+sudo python asl_weather -n 54321 -v en_US-amy-low.onnx
 
 # Enable time and date announcements
-sudo python main.py --say-time --say-date
+sudo python asl_weather --say-time --say-date
 
 # Full example with multiple overrides
-sudo python main.py \
+sudo python asl_weather \
     -p N6A3K7 \
     -c CA \
     -n 12345 \
@@ -165,7 +167,7 @@ sudo python main.py \
 Preview the announcement text without broadcasting:
 
 ```bash
-python main.py --dry-run
+python asl_weather --dry-run
 ```
 
 Output example:
@@ -225,7 +227,7 @@ location_name = Toronto, Ontario  # Optional override
 
 ```
 asl_weather_announce/
-├── main.py                    # Main entry point
+├── asl_weather                    # Main entry point
 ├── config.ini.example         # Example configuration file
 ├── get_location/              # Location lookup package
 │   ├── postal_lookup.py       # Postal code geocoding
@@ -278,7 +280,7 @@ This script must be run as root or the asterisk user.
 
 **Solution**: Use `sudo` or run as the `asterisk` user:
 ```bash
-sudo python main.py
+sudo python asl_weather
 ```
 
 ### Missing Dependencies
@@ -326,7 +328,7 @@ Could not find location for postal code 'XXXXX' in country 'XX'
 
 Example:
 ```bash
-LOG_LEVEL=DEBUG sudo python main.py --dry-run
+LOG_LEVEL=DEBUG sudo python asl_weather --dry-run
 ```
 
 ## License
