@@ -79,7 +79,7 @@ jobs:
       - name: Create source tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Create source tarball
+          # Create source tarball from parent dir, output to artifacts
           cd ..
           tar czf "asl_weather_announce/artifacts/asl-weather-announce_${VERSION}.orig.tar.gz" \
             --exclude='.git' \
@@ -91,7 +91,7 @@ jobs:
             --exclude='.venv' \
             --transform "s|^asl_weather_announce|asl-weather-announce-${VERSION}|" \
             asl_weather_announce/
-          ls -la artifacts/
+          ls -la asl_weather_announce/artifacts/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
