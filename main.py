@@ -226,11 +226,25 @@ Examples:
         action="store_true",
         help="Announce the current time before the weather (overrides config file)"
     )
+
+    parser.add_argument(
+        "-T", "--no-say-time",
+        action="store_false",
+        dest="say_time",
+        help="Do not announce the current time before the weather (overrides config file)"
+    )
     
     parser.add_argument(
         "-d", "--say-date",
         action="store_true",
         help="Announce the current date before the weather (overrides config file)"
+    )
+    
+    parser.add_argument(
+        "-D", "--no-say-date",
+        action="store_false",
+        dest="say_date",
+        help="Do not announce the current date before the weather (overrides config file)"
     )
     
     parser.add_argument(

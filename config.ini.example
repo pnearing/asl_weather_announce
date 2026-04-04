@@ -36,8 +36,12 @@
 # are optional and will be ignored for location lookup.
 postal_code = N6A 3K7
 
-# 2-letter ISO country code
-# Examples: CA (Canada), US (United States), GB (United Kingdom)
+# Country code - accepts flexible input formats:
+# - 2-letter ISO codes (e.g., "US", "CA", "GB")
+# - 3-letter ISO codes (e.g., "USA", "CAN", "GBR")
+# - Numeric ISO codes (e.g., "840", "124", "826")
+# - Full country names (e.g., "United States", "Canada", "United Kingdom")
+# All formats are case-insensitive and will be normalized automatically.
 # Note: Optional if latitude and longitude are specified below.
 country_code = CA
 
@@ -58,6 +62,8 @@ country_code = CA
 # Example: location_name = Toronto, Ontario
 # Note: Only used when latitude and longitude are configured.
 # location_name =
+
+# TODO: Add support for gpsd, in the case of a mobile station.
 
 [asl]
 # ASL (AllStarLink) node number
