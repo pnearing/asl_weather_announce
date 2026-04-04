@@ -52,7 +52,7 @@ sudo apt install asl-tts  # or equivalent for your system
 
 3. **Run the script:**
    ```bash
-   sudo python asl_weather
+   sudo asl_weather
    ```
 
 ## Configuration
@@ -131,10 +131,10 @@ country_code = CA  # Still used as fallback
 
 ```bash
 # Use default config file (/etc/asl_weather.conf)
-sudo python asl_weather
+sudo asl_weather
 
 # Specify custom config file
-sudo python asl_weather --config /path/to/custom.conf
+sudo asl_weather --config /path/to/custom.conf
 ```
 
 ### Command Line Overrides
@@ -143,16 +143,16 @@ All config file options can be overridden via command line:
 
 ```bash
 # Override location
-sudo python asl_weather --postal-code N6A3K7 --country-code CA
+sudo asl_weather --postal-code N6A3K7 --country-code CA
 
 # Override node number and voice
-sudo python asl_weather -n 54321 -v en_US-amy-low.onnx
+sudo asl_weather -n 54321 -v en_US-amy-low.onnx
 
 # Enable time and date announcements
-sudo python asl_weather --say-time --say-date
+sudo asl_weather --say-time --say-date
 
 # Full example with multiple overrides
-sudo python asl_weather \
+sudo asl_weather \
     -p N6A3K7 \
     -c CA \
     -n 12345 \
@@ -167,7 +167,7 @@ sudo python asl_weather \
 Preview the announcement text without broadcasting:
 
 ```bash
-python asl_weather --dry-run
+asl_weather --dry-run
 ```
 
 Output example:
@@ -280,7 +280,7 @@ This script must be run as root or the asterisk user.
 
 **Solution**: Use `sudo` or run as the `asterisk` user:
 ```bash
-sudo python asl_weather
+sudo asl_weather
 ```
 
 ### Missing Dependencies
@@ -328,7 +328,7 @@ Could not find location for postal code 'XXXXX' in country 'XX'
 
 Example:
 ```bash
-LOG_LEVEL=DEBUG sudo python asl_weather --dry-run
+LOG_LEVEL=DEBUG sudo asl_weather --dry-run
 ```
 
 ## License

@@ -18,11 +18,11 @@ Features:
     - Dry-run mode for testing without broadcasting
 
 Usage:
-    sudo python main.py
-    sudo python main.py --postal-code N6A3K7 --country-code CA
-    sudo python main.py --config /path/to/custom.conf
-    sudo python main.py -p N6A3K7 -c CA -n 12345 --say-time --say-date
-    sudo python main.py --dry-run  # Preview announcement text only
+    sudo asl_weather
+    sudo asl_weather --postal-code N6A3K7 --country-code CA
+    sudo asl_weather --config /path/to/custom.conf
+    sudo asl_weather -p N6A3K7 -c CA -n 12345 --say-time --say-date
+    sudo asl_weather --dry-run  # Preview announcement text only
 
 Configuration:
     Default config path: /etc/asl_weather.conf
@@ -127,7 +127,7 @@ def check_root_privileges() -> None:
     
     if current_uid != 0 and current_user != "asterisk":
         logging.error("This script must be run as root or the asterisk user.")
-        logging.error("Please run with: sudo python main.py")
+        logging.error("Please run with: sudo asl_weather")
         sys.exit(1)
 
 
@@ -237,10 +237,10 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  sudo python main.py
-  sudo python main.py -p N6A3K7 -c CA
-  sudo python main.py -C /path/to/custom.conf -n 12345
-  sudo python main.py -p N6A3K7 -c CA -v en_GB-alan-low.onnx
+  sudo asl_weather
+  sudo asl_weather -p N6A3K7 -c CA
+  sudo asl_weather -C /path/to/custom.conf -n 12345
+  sudo asl_weather -p N6A3K7 -c CA -v en_GB-alan-low.onnx
         """
     )
     
@@ -312,6 +312,13 @@ Examples:
         action="store_true",
         help="Print the announcement text instead of sending it to asl-tts"
     )
+    
+    parser.add_argument(
+        "-u", "--temperature-unit",
+        type=str,
+        choices=["C", "F"],
+        help="Temperature unit: C for Celsius, F for Fahrenheit (overrides config file)"
+    )
 
     return parser.parse_args()
 
@@ -350,6 +357,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "say_time": False,
         "say_date": False,
         "timezone": None,
+        "temperature_unit": "C",
     }
     
     if not os.path.exists(config_path):
@@ -377,6 +385,10 @@ def load_config(config_path: str) -> Dict[str, Any]:
             timezone_val = parser.get("asl_weather", "timezone").strip()
             if timezone_val:
                 config["timezone"] = timezone_val
+        if parser.has_option("asl_weather", "temperature_unit"):
+            temp_unit = parser.get("asl_weather", "temperature_unit").strip().upper()
+            if temp_unit in ("C", "F"):
+                config["temperature_unit"] = temp_unit
     
     # Read location section
     if parser.has_section("location"):
@@ -453,6 +465,7 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "say_time": cli_args.say_time or file_config["say_time"],
         "say_date": cli_args.say_date or file_config["say_date"],
         "timezone": file_config["timezone"],
+        "temperature_unit": cli_args.temperature_unit or file_config["temperature_unit"] or "C",
     }
     
     # Check if latitude/longitude override is provided
@@ -713,7 +726,7 @@ def main() -> int:
         location_data["city"] = location_data["city"].split("(")[0].strip()
     
     # Get current weather for the location
-    weather = get_weather(location_data, logger=logger)
+    weather = get_weather(location_data, temperature_unit=config.get("temperature_unit", "C"), logger=logger)
     
     # Build announcement text
     announcement = weather.natural_language()
