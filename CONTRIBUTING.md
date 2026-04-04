@@ -4,7 +4,6 @@ Thank you for your interest in contributing to ASL Weather Announce! This docume
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Code Style](#code-style)
@@ -13,14 +12,6 @@ Thank you for your interest in contributing to ASL Weather Announce! This docume
 - [Submitting Changes](#submitting-changes)
 - [Release Process](#release-process)
 
-## Code of Conduct
-
-This project adheres to a standard of professional and respectful communication. We expect all contributors to:
-
-- Be respectful and inclusive in all interactions
-- Accept constructive criticism gracefully
-- Focus on what is best for the project and the community
-- Show empathy towards other community members
 
 ## Getting Started
 
@@ -37,7 +28,7 @@ This project adheres to a standard of professional and respectful communication.
 
 - Python 3.8 or higher
 - `git` for version control
-- Root access (for testing with `asl-tts`)
+- Root / asterisk user access (for testing with `asl-tts`)
 
 ### Installation
 
@@ -51,10 +42,10 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r developer_requirements.txt
 ```
 
-### Running Tests
+### Running Tests (When tests are implemented)
 
 ```bash
 # Run all tests
@@ -92,6 +83,12 @@ We follow PEP 8 with the following specific conventions:
 #### Naming Conventions
 
 | Type | Convention | Example |
+| --- | --- | --- |
+| Modules | lowercase with underscores | `weather_lookup.py` |
+| Classes | CapWords | `CurrentWeatherResult` |
+| Functions | lowercase with underscores | `get_current_weather()` |
+| Constants | UPPERCASE_WITH_UNDERSCORES | `DEFAULT_CONFIG_PATH` |
+| Variables | lowercase with underscores | `temperature_unit` |
 | Private attributes | leading underscore | `_format_temp()` |
 
 #### Imports
@@ -216,7 +213,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 - Use the `logging` module, not `print()`
 - Use appropriate log levels:
   - `DEBUG`: Detailed information for debugging
-  - `INFO`: Confirmation that things are working
+  - `INFO`: Confirmation that things are working, progress updates
   - `WARNING`: Something unexpected but handled
   - `ERROR`: Serious problem, often followed by exit
 - Include context in log messages
@@ -230,7 +227,7 @@ logger.error(f"Invalid coordinates: {e}")
 
 ## Testing
 
-### Test Requirements
+### Test Requirements (When tests are implemented)
 
 - All new features must include tests
 - Bug fixes must include regression tests
@@ -238,7 +235,7 @@ logger.error(f"Invalid coordinates: {e}")
 
 ### Test Organization
 
-```
+```text
 tests/
 ├── __init__.py
 ├── test_weather_lookup.py
@@ -275,41 +272,6 @@ def test_weather_lookup_invalid_coordinates():
 
 ## Submitting Changes
 
-### Commit Messages
-
-Follow conventional commits format:
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-Types:
-
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation only
-- `style`: Code style (formatting, no logic change)
-- `refactor`: Code refactoring
-- `test`: Test additions/changes
-- `chore`: Build/config changes
-
-Examples:
-```
-feat(weather): add wind speed and direction support
-
-Add optional wind information to weather announcements.
-Wind data is retrieved from Open-Meteo API and formatted
-for natural language TTS output.
-
-fix(gps): handle gpsd connection timeout gracefully
-
-docs(config): update example config with new options
-```
-
 ### Pull Request Process
 
 1. Update the README.md with details of changes if applicable
@@ -330,7 +292,9 @@ All submissions require review. Reviewers will check:
 
 ## Release Process
 
-1. Update version in `__init__.py` files
+1. Update version in `__init__.py`, `asl_weather`, and module files, IE:
+   - `get_location/postal_lookup.py`
+   - `get_weather/weather_lookup.py`
 2. Update CHANGELOG.md
 3. Tag release: `git tag -a v1.2.0 -m "Version 1.2.0"`
 4. Push tags: `git push origin v1.2.0`

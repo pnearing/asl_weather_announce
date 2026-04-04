@@ -7,6 +7,9 @@ standard 2-letter ISO 3166-1 alpha-2 code.
 
 All lookups are case-insensitive. Supports fuzzy matching for country names.
 """
+__version__ = "1.0.0"
+__author__ = "Peter Nearing"
+__email__ = "me@peternearing.ca"
 
 import json
 import os

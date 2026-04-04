@@ -4,6 +4,9 @@ Exception classes for postal code lookup module.
 This module defines the exception hierarchy used throughout the get_location package.
 All exceptions inherit from PostalLookupError for consistent error handling.
 """
+__version__ = "1.0.0"
+__author__ = "Peter Nearing"
+__email__ = "me@peternearing.ca"
 
 
 class PostalLookupError(Exception):

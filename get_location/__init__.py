@@ -58,3 +58,7 @@ __all__ = [
     'RateLimitError',         # API rate limiting
     'APIResponseError',       # Invalid API responses
 ]
+
+__version__ = "1.0.0"
+__author__ = "Peter Nearing"
+__email__ = "me@peternearing.ca"

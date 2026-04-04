@@ -4,6 +4,9 @@ Exception classes for weather lookup module.
 This module defines the exception hierarchy used throughout the get_weather package.
 All exceptions inherit from WeatherLookupError for consistent error handling.
 """
+__version__ = "1.0.0"
+__author__ = "Peter Nearing"
+__email__ = "me@peternearing.ca"
 
 
 class WeatherLookupError(Exception):
