@@ -23,7 +23,7 @@
 ## Voice & Audio
 
 - [ ] Add pre-announcement, post-announcement, and tone/beep options
-- [ ] Add audio file output option (for manual review/testing)
+- [x] Add audio file output option (for manual review/testing)
 
 ## System Integration
 
@@ -42,8 +42,8 @@
 ## Documentation
 
 - [ ] Add troubleshooting guide for common GPS issues
-- [ ] Add example configurations for different use cases
-- [ ] Document API rate limits and caching behavior
+- [x] Add example configurations for different use cases
+- [x] Document API rate limits and caching behavior
 
 ## Performance & Reliability
 

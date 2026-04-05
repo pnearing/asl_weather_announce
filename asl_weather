@@ -50,19 +50,20 @@ Configuration:
     voice_dir = /var/lib/piper-tts
 
 Command Line Options:
-    -C, --config PATH         Path to configuration file (default: /etc/asl_weather.conf)
-    -p, --postal-code CODE    Postal/ZIP code to lookup (overrides config)
-    -c, --country-code CODE   Country code - accepts 2-letter (CA), 3-letter (CAN),
-                              numeric (124), or full name (Canada). Case-insensitive.
-    -n, --node-number NUM     ASL node number for broadcast (overrides config)
-    -v, --voice VOICE         TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
-    -l, --log-file PATH       Path to log file (logs to file instead of terminal)
-    -t, --say-time            Announce current time before weather (overrides config)
-    -T, --no-say-time         Do not announce current time (overrides config)
-    -d, --say-date            Announce current date before weather (overrides config)
-    -D, --no-say-date         Do not announce current date (overrides config)
-    --dry-run                 Print announcement text instead of sending to asl-tts
-    --test-config             Validate configuration and exit without making API calls or announcements
+    -C, --config PATH           Path to configuration file (default: /etc/asl_weather.conf)
+    -p, --postal-code CODE      Postal/ZIP code to lookup (overrides config)
+    -c, --country-code CODE     Country code - accepts 2-letter (CA), 3-letter (CAN),
+                                numeric (124), or full name (Canada). Case-insensitive.
+    -n, --node-number NUM       ASL node number for broadcast (overrides config)
+    -u, --temperature-unit UNIT Temperature unit - C for Celsius, F for Fahrenheit (overrides config)
+    -v, --voice VOICE           TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
+    -l, --log-file PATH         Path to log file (logs to file instead of terminal)
+    -t, --say-time              Announce current time before weather (overrides config)
+    -T, --no-say-time           Do not announce current time (overrides config)
+    -d, --say-date              Announce current date before weather (overrides config)
+    -D, --no-say-date           Do not announce current date (overrides config)
+    -f, --output-file FILE      Output speech to file (passed to asl-tts -f, no extension needed)
+    --test-config               Validate configuration and exit without making API calls or announcements
 
 Location Specification:
     Locations can be specified in two ways:
@@ -84,7 +85,7 @@ Notes:
     - The script requires root or asterisk user privileges when not in dry-run mode
     - Weather data is provided by Open-Meteo (free, no API key required)
     - Location lookups are cached to reduce API calls
-    - TTS voice files must be installed in the voice directory
+    - TTS voice files must be installed in the piper-tts voice directory
 """
 
 __version__ = "1.0.1"
@@ -271,6 +272,13 @@ Examples:
     )
     
     parser.add_argument(
+        "-u", "--temperature-unit",
+        type=str,
+        choices=["C", "F"],
+        help="Temperature unit: C for Celsius, F for Fahrenheit (overrides config file)"
+    )
+    
+    parser.add_argument(
         "-v", "--voice",
         type=str,
         help="TTS voice to use (e.g., en_GB-alan-low.onnx, overrides config file)"
@@ -309,6 +317,12 @@ Examples:
     )
     
     parser.add_argument(
+        "-f", "--output-file",
+        type=str,
+        help="Output speech to file (passed to asl-tts -f option, no extension needed, .ul will be appended automatically)"
+    )
+
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the announcement text instead of sending it to asl-tts"
@@ -324,13 +338,6 @@ Examples:
         "--offline",
         action="store_true",
         help="Offline mode - only announce time/date without weather API calls"
-    )
-    
-    parser.add_argument(
-        "-u", "--temperature-unit",
-        type=str,
-        choices=["C", "F"],
-        help="Temperature unit: C for Celsius, F for Fahrenheit (overrides config file)"
     )
 
     return parser.parse_args()
@@ -371,6 +378,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "say_date": False,
         "timezone": None,
         "temperature_unit": "C",
+        "output_file": None,
         "offline": False,
         "cache_size": 100,
     }
@@ -404,6 +412,9 @@ def load_config(config_path: str) -> Dict[str, Any]:
             temp_unit = parser.get("asl_weather", "temperature_unit").strip().upper()
             if temp_unit in ("C", "F"):
                 config["temperature_unit"] = temp_unit
+        
+        if parser.has_option("asl_weather", "output_file"):
+            config["output_file"] = parser.get("asl_weather", "output_file").strip()
         
         if parser.has_option("asl_weather", "offline"):
             offline_val = parser.get("asl_weather", "offline").strip().lower()
@@ -491,6 +502,7 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "say_date": cli_args.say_date or file_config["say_date"],
         "timezone": file_config["timezone"],
         "temperature_unit": cli_args.temperature_unit or file_config["temperature_unit"] or "C",
+        "output_file": cli_args.output_file or file_config["output_file"],
         "offline": cli_args.offline or file_config["offline"],
         "cache_size": file_config["cache_size"],
     }
@@ -744,6 +756,8 @@ def main() -> int:
         print(f"    Say time: {'enabled' if config.get('say_time') else 'disabled'}")
         print(f"    Say date: {'enabled' if config.get('say_date') else 'disabled'}")
         print(f"    Timezone: {config.get('timezone') or 'local (default)'}")
+        print(f"  Output file: {config.get('output_file') or 'none (broadcast to node) (default)'}")
+        print()
         print(f"    Offline mode: {'enabled' if config.get('offline') else 'disabled'}")
         print()
         print("Configuration is valid.")
@@ -892,6 +906,9 @@ def main() -> int:
     asl_tts_cmd.append(f"-t {announcement}")
     if config['voice']:
         asl_tts_cmd.append(f"-v {config['voice']}")
+    
+    if config['output_file']:
+        asl_tts_cmd.append(f"-f {config['output_file']}")
     
     # Output weather information to stdout if in dry run mode
     if cli_args.dry_run:
