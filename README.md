@@ -242,6 +242,7 @@ Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontari
 | `-d` | `--say-date` | Announce current date |
 | `-D` | `--no-say-date` | Do not announce current date |
 | | `--dry-run` | Print text only, don't broadcast |
+| | `--offline` | Offline mode - time/date only without weather API calls |
 
 ## Location Specification Methods
 
