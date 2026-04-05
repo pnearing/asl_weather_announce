@@ -1,0 +1,13 @@
+[Unit]
+Description=ASL Weather Announce Service
+After=network.target asterisk.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/asl_weather
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=asl-weather
+
+[Install]
+WantedBy=multi-user.target

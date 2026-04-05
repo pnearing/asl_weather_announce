@@ -1,0 +1,10 @@
+[Unit]
+Description=Run ASL Weather Announce every hour on the hour
+Requires=asl-weather.service
+
+[Timer]
+OnCalendar=*-*-* *:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
