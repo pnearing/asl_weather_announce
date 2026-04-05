@@ -1,9 +1,28 @@
 #!/bin/sh
 set -e
 
-# Create log directory if it doesn't exist
-if [ ! -d /var/log ]; then
-    mkdir -p /var/log
+# Create log directory for asl_weather with asterisk group ownership
+log_dir="/var/log/asl_weather"
+log_file="$log_dir/asl_weather.log"
+
+if [ ! -d "$log_dir" ]; then
+    mkdir -p "$log_dir"
+    chmod 755 "$log_dir"
+fi
+
+# Set group to asterisk if the group exists, and make group-writable
+if getent group asterisk >/dev/null 2>&1; then
+    chgrp asterisk "$log_dir"
+    chmod 775 "$log_dir"
+fi
+
+# Create the log file if it doesn't exist, with asterisk group ownership
+if [ ! -f "$log_file" ]; then
+    touch "$log_file"
+    chmod 664 "$log_file"
+    if getent group asterisk >/dev/null 2>&1; then
+        chgrp asterisk "$log_file"
+    fi
 fi
 
 # Create cache directory

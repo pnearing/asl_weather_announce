@@ -28,7 +28,7 @@
 
 ## System Integration
 
-- [ ] Add systemd service / timer file example, or cron job example
+- [x] Add systemd service / timer file example, or cron job example
 - [ ] Add log rotation configuration example
 - [ ] Add ASL node status check before announcement
 - [ ] Add repeater COS/busy detection to avoid interrupting traffic

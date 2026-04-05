@@ -10,7 +10,7 @@
 # Optional: Log file path for debug/output logging
 # When specified, logs will be written to this file instead of the terminal
 # Example: /var/log/asl_weather.log or /home/user/.asl_weather.log
-# log_file = /var/log/asl_weather.log
+# log_file = /var/log/asl_weather/asl_weather.log
 
 # Optional: Announce the current time before the weather
 # When set to true, the current time will be announced before the weather information

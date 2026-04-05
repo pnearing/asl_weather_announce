@@ -96,6 +96,7 @@ import argparse
 import configparser
 import logging
 import os
+import pwd
 import shutil
 import subprocess
 import sys
@@ -107,6 +108,7 @@ from get_weather import get_current_weather, WeatherLookupError, NetworkError
 
 DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
 DEFAULT_CONFIG_PATH = "/etc/asl_weather.conf"
+DEFAULT_LOG_FILE = "/var/log/asl_weather/asl_weather.log"
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
@@ -121,8 +123,6 @@ def check_root_privileges() -> None:
     Raises:
         SystemExit: If not running as root or asterisk with an appropriate error message.
     """
-    import pwd
-    
     current_uid = os.geteuid()
     current_user = pwd.getpwuid(current_uid).pw_name
     
@@ -635,6 +635,29 @@ def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C", logg
     return result
 
 
+def check_log_writable(log_file: str) -> bool:
+    """
+    Check if the log file is writable.
+    
+    If the log file exists, checks if it's writable.
+    If it doesn't exist, checks if the parent directory is writable.
+    
+    Args:
+        log_file: Path to the log file.
+        
+    Returns:
+        True if log file is writable, False otherwise.
+    """
+    if os.path.exists(log_file):
+        return os.access(log_file, os.W_OK)
+    
+    log_dir = os.path.dirname(log_file)
+    if log_dir and os.path.exists(log_dir):
+        return os.access(log_dir, os.W_OK)
+    
+    return False
+
+
 def main() -> int:
     """
     Main entry point for the ASL Weather Announce script.
@@ -645,16 +668,30 @@ def main() -> int:
     # Parse CLI arguments first
     cli_args = parse_arguments()
     
-    # Configure logging based on CLI args
-    if cli_args.log_file:
-        # Log to file only (not terminal)
-        logging.basicConfig(
-            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(cli_args.log_file)
-            ]
-        )
+    # Determine effective log file: CLI arg > config file > default
+    effective_log_file = cli_args.log_file
+    if not effective_log_file:
+        effective_log_file = DEFAULT_LOG_FILE
+    
+    # Configure logging based on effective log file
+    if effective_log_file:
+        # Check if log file is writable (directory setup happens at install time)
+        if check_log_writable(effective_log_file):
+            logging.basicConfig(
+                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                handlers=[
+                    logging.FileHandler(effective_log_file)
+                ]
+            )
+        else:
+            # Fall back to console logging if not writable
+            logging.basicConfig(
+                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Log file {effective_log_file} is not writable, using console logging")
     else:
         # Log to terminal (default)
         logging.basicConfig(
@@ -712,18 +749,22 @@ def main() -> int:
         print("Configuration is valid.")
         return 0
 
-    # Reconfigure logging if log_file is specified in config
+    # Reconfigure logging if log_file is specified in config (and not overridden by CLI)
     if config['log_file'] and not cli_args.log_file:
-        # Reconfigure to log to file
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
-        logging.basicConfig(
-            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(config['log_file'])
-            ]
-        )
+        # Check if log file is writable (directory setup happens at install time)
+        if check_log_writable(config['log_file']):
+            # Reconfigure to log to file
+            for handler in logging.root.handlers[:]:
+                logging.root.removeHandler(handler)
+            logging.basicConfig(
+                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                handlers=[
+                    logging.FileHandler(config['log_file'])
+                ]
+            )
+        else:
+            logger.warning(f"Config log file {config['log_file']} is not writable, continuing with console logging")
     
     # Check if the voice exists
     if config['voice']:

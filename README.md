@@ -58,6 +58,26 @@ pip install requests
 sudo apt install asl-tts  # or equivalent for your system
 ```
 
+### Log Directory Setup (Manual Install)
+
+When installing manually (not via .deb package), create the log directory with proper permissions for the `asterisk` user:
+
+```bash
+# Create log directory
+sudo mkdir -p /var/log/asl_weather
+
+# Set permissions: owner root, group asterisk, writable by group
+sudo chown root:asterisk /var/log/asl_weather
+sudo chmod 775 /var/log/asl_weather
+
+# Create the log file with asterisk group ownership
+sudo touch /var/log/asl_weather/asl_weather.log
+sudo chown root:asterisk /var/log/asl_weather/asl_weather.log
+sudo chmod 664 /var/log/asl_weather/asl_weather.log
+```
+
+**Note:** These steps are handled automatically when installing via the Debian package.
+
 ## Quick Start
 
 1. **Copy the example configuration:**
@@ -123,7 +143,7 @@ The configuration file uses INI format with the following sections:
 
 ```ini
 [asl_weather]
-log_file = /var/log/asl_weather.log
+log_file = /var/log/asl_weather/asl_weather.log
 say_time = true
 say_date = true
 timezone = America/Toronto

@@ -229,7 +229,7 @@ sudo systemctl start asl-weather.timer asl-weather-full.timer
 
 Create a wrapper script that checks the hour and calls `asl_weather` with appropriate options:
 
-**Step 1:** Create `/usr/local/bin/asl-weather-smart.sh`:
+**Step 1:** Create `/usr/local/bin/asl-weather-smart.sh`, or copy from `system/asl-weather-smart.sh`:
 
 ```bash
 #!/bin/bash
