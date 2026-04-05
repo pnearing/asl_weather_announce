@@ -1,3 +1,15 @@
+asl-weather-announce (1.0.1-1) unstable; urgency=medium
+
+  * New release with resilience patterns and caching improvements.
+  * Added LRU cache for location lookups with configurable size.
+  * Added circuit breaker protection for external APIs.
+  * Added API metrics collection.
+  * Added offline mode for time/date announcements only.
+  * Removed weather caching (always fetch fresh data).
+  * Removed TTL from location cache (postal codes rarely change).
+
+ -- Peter Nearing <me@peternearing.ca>  Fri, 04 Apr 2026 21:30:00 -0400
+
 asl-weather-announce (1.0.0-1) unstable; urgency=medium
 
   * Initial release.

@@ -11,8 +11,11 @@ A Python module for postal code to location lookup using multiple geocoding serv
 - **Coordinate Validation**: Safe conversion and validation of latitude/longitude data
 - **Flexible Input**: Handles various postal code formats and country codes
 - **Rate Limiting Awareness**: Built-in handling for API rate limits
-- **Intelligent Caching**: Both in-memory and persistent disk caching to minimize API calls and improve performance
-- **Automatic Cache Management**: Cache stored in appropriate system locations based on user privileges
+- **LRU Caching**: Sized-based LRU cache with persistence - least recently used entries evicted first
+- **Circuit Breaker Protection**: Automatic circuit breaker prevents cascading failures when APIs are down
+- **API Metrics Collection**: Tracks API response times and success rates for monitoring
+- **Persistent Disk Storage**: Cache stored in appropriate system locations based on user privileges
+- **Configurable Cache Size**: Adjust cache size for mobile vs stationary nodes
 
 ## Installation
 
@@ -54,6 +57,7 @@ Main class for postal code location lookups with multiple API services and compr
 - `timeout` (float): Default timeout for requests in seconds (default: 10.0)
 - `user_agent` (str): Default user agent for HTTP requests
 - `logger` (logging.Logger, optional): Logger instance for debugging
+- `cache_size` (int): Maximum number of entries to cache (default: 100)
 
 **Methods:**
 
@@ -389,16 +393,40 @@ The module provides granular error handling for different failure scenarios:
 
 The module includes a sophisticated caching system to reduce API calls and improve performance:
 
-### Caching Strategy
+### LRU Caching
 
-- **Two-tier caching**: In-memory cache for speed, disk persistence for survival across restarts
-- **Automatic cache location**:
-  - Root users: `/var/cache/asl_weather_announce/postal_cache.json`
-  - Regular users: `$HOME/.cache/asl_weather_announce/postal_cache.json`
-- **Negative caching**: Failed lookups are cached to avoid repeated API calls for invalid postal codes
-- **Cache persistence**: Cache is automatically saved to disk after each successful lookup
+The module uses a sized-based LRU (Least Recently Used) cache with no TTL. This is ideal for postal code lookups since they rarely change.
 
-### Cache Behavior
+**Features:**
+
+- **No TTL**: Entries persist until evicted by size limit
+- **LRU Eviction**: When cache is full, least recently accessed entries are removed first
+- **Persistent Storage**: Cache survives script restarts
+- **Thread-Safe**: Safe for concurrent access
+
+**Cache Location:**
+
+- **Root users**: `/var/cache/asl_weather_announce/location_cache.json`
+- **Regular users**: `$HOME/.cache/asl_weather_announce/location_cache.json`
+
+### Circuit Breaker Pattern
+
+The module includes automatic circuit breaker protection for external APIs to prevent cascading failures when services are down.
+
+**Features:**
+
+- **Automatic Failover**: Circuit opens after 5 consecutive failures
+- **Self-Healing**: Circuit automatically attempts recovery after 60 seconds
+- **Metrics Collection**: Tracks API response times and success rates
+- **Transparent Operation**: Works automatically without configuration
+
+### API Metrics
+
+All API calls are automatically instrumented with metrics:
+
+- **Response Time Tracking**: Average response times per service
+- **Success/Failure Rates**: Track API reliability
+- **Per-Service Stats**: Separate metrics for Zippopotam.us and Nominatim
 
 ```python
 from get_location import PostalLookup
@@ -413,7 +441,19 @@ result2 = lookup.lookup("90210", "US")  # No API call, instant result
 
 ### Manual Cache Management
 
-The cache is automatically managed, but you can check cache status via logging:
+The cache is automatically managed, but you can configure the cache size:
+
+```python
+from get_location import PostalLookup
+
+# For mobile nodes that visit many locations, increase cache size
+lookup = PostalLookup(cache_size=500)  # Store up to 500 lookups
+
+# For stationary nodes, default is usually sufficient
+lookup = PostalLookup()  # Default: 100 entries
+```
+
+You can check cache status via logging:
 
 ```python
 import logging
@@ -422,7 +462,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 lookup = PostalLookup(logger=logger)
-# Cache operations will be logged
+# Cache operations and metrics will be logged
 ```
 
 ### Cache File Location

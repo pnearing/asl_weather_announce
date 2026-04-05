@@ -87,7 +87,7 @@ Notes:
     - TTS voice files must be installed in the voice directory
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
@@ -857,9 +857,10 @@ def main() -> int:
         print(announcement)
         return 0
     
-    # Send announcement to asl-tts
+    # Send announcement to asl-tts, if an annoucement exists
     try:
-        subprocess.check_call(asl_tts_cmd)
+        if announcement:
+            subprocess.check_call(asl_tts_cmd)
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to send announcement to asl-tts: {e}")
         sys.exit(1)

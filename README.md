@@ -9,7 +9,11 @@ A Python-based weather announcement system for [AllStarLinkv3](https://www.allst
 - **Smart Geocoding**: Multi-service postal code lookup with automatic failover (Zippopotam.us → OpenStreetMap Nominatim)
 - **TTS-Optimized Output**: Natural language weather descriptions designed for speech synthesis
 - **Time & Date Announcements**: Optional current time and date announcements with timezone support
-- **Persistent Caching**: Disk-based caching for location lookups to reduce API calls
+- **LRU Caching**: Sized-based LRU cache for location lookups with configurable size
+- **Offline Mode**: Announce time/date only without weather API calls (useful for network outages)
+- **Circuit Breaker Protection**: Automatic circuit breakers prevent cascading failures when APIs are down
+- **API Metrics**: Tracks API response times and success rates for monitoring
+- **Persistent Storage**: Cache survives script restarts
 - **Flexible Configuration**: INI file configuration with CLI override support
 - **Voice Selection**: Configurable TTS voices via asl-tts integration
 - **Dry-Run Mode**: Test mode to preview announcements without broadcasting
@@ -35,6 +39,7 @@ sudo apt-get install -f
 ### Manual Installation
 
 #### Prerequisites
+
 - Root or `asterisk` user privileges (for ASL integration)
 - `asl-tts` command-line tool for text-to-speech
 
@@ -56,16 +61,19 @@ sudo apt install asl-tts  # or equivalent for your system
 ## Quick Start
 
 1. **Copy the example configuration:**
+
    ```bash
    sudo cp config.ini.example /etc/asl_weather.conf
    ```
 
 2. **Edit the configuration** with your location and node number:
+
    ```bash
    sudo nano /etc/asl_weather.conf
    ```
 
 3. **Run the script:**
+
    ```bash
    sudo asl_weather
    ```
@@ -77,16 +85,19 @@ The configuration file uses INI format with the following sections:
 ### `[asl_weather]` - General Settings
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| -------- | ------------- | --------- |
 | `log_file` | Path to log file (optional) | console output |
 | `say_time` | Announce current time (`true`/`false`) | `false` |
 | `say_date` | Announce current date (`true`/`false`) | `false` |
 | `timezone` | IANA timezone name (e.g., `America/Toronto`) | system local time |
+| `temperature_unit` | Temperature unit (`C` or `F`) | `C` |
+| `offline` | Offline mode - time/date only (`true`/`false`) | `false` |
+| `cache_size` | Location cache size (entries) | `100` |
 
 ### `[location]` - Location Settings
 
 | Option | Description | Required |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `postal_code` | Postal or ZIP code | Yes (unless using lat/lon) |
 | `country_code` | Country identifier* | Yes (unless using lat/lon) |
 | `latitude` | Decimal latitude (-90 to 90) | No |
@@ -98,13 +109,13 @@ The configuration file uses INI format with the following sections:
 ### `[asl]` - ASL Node Settings
 
 | Option | Description | Required |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `node_number` | Your ASL node number | Yes |
 
 ### `[asl-tts]` - TTS Voice Settings
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| -------- | ------------- | --------- |
 | `voice` | Voice file name (e.g., `en_GB-alan-low.onnx`) | system default |
 | `voice_dir` | Directory containing voice files | `/var/lib/piper-tts` |
 
@@ -128,7 +139,32 @@ node_number = 12345
 voice = en_GB-alan-low.onnx
 ```
 
-### Configuration with Coordinates (No Postal Code)
+### Configuration with Offline Mode
+
+For network outages or testing without weather API calls:
+
+```ini
+[asl_weather]
+# Only announce time/date, skip all API calls
+offline = true
+say_time = true
+say_date = true
+timezone = America/Toronto
+```
+
+### Configuration with Custom Cache Size
+
+For mobile nodes that visit many locations, increase the cache size:
+
+```ini
+[asl_weather]
+# Increase cache for mobile operation (default is 100)
+cache_size = 500
+
+[location]
+postal_code = N6A 3K7
+country_code = CA
+```
 
 ```ini
 [location]
@@ -194,7 +230,7 @@ Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontari
 ### Command Line Options
 
 | Short | Long | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `-C` | `--config` | Path to configuration file |
 | `-p` | `--postal-code` | Postal/ZIP code to lookup |
 | `-c` | `--country-code` | Country code (2-letter, 3-letter, numeric, or full name) |
@@ -240,7 +276,7 @@ location_name = Toronto, Ontario  # Optional override
 
 ## Project Structure
 
-```
+```markdown
 asl_weather_announce/
 ├── asl_weather                    # Main entry point
 ├── config.ini.example         # Example configuration file
@@ -259,54 +295,117 @@ asl_weather_announce/
 
 ### Location Services
 
-**Primary: Zippopotam.us**
+#### Primary: Zippopotam.us
+
 - URL: <https://api.zippopotam.us/{country}/{postalcode}>
 - Free, no API key required
 - Fast and lightweight
 
-**Fallback: OpenStreetMap Nominatim**
+#### Fallback: OpenStreetMap Nominatim
+
 - URL: <https://nominatim.openstreetmap.org/search>
 - Free, attribution required
 - Comprehensive global coverage
 
 ### Weather Service
 
-**Open-Meteo**
+#### Open-Meteo
+
 - URL: <https://api.open-meteo.com/v1/forecast>
 - Free, unlimited access, no API key required
 - Data source: ECMWF (European Centre for Medium-Range Weather Forecasts)
 
+### Offline Mode
+
+When network connectivity is unavailable, use offline mode to announce only time and date:
+
+```bash
+# Via command line
+asl_weather --offline
+
+# Via configuration
+# In config.ini:
+# offline = true
+```
+
+In offline mode:
+
+- No postal code lookups are performed
+- No weather data is fetched
+- Only time/date announcements are made (if enabled)
+- Useful for network outages or testing
+
+### Circuit Breaker Protection
+
+The system automatically protects against cascading failures:
+
+- **Automatic Detection**: Circuit opens after 5 consecutive API failures
+- **Self-Healing**: Automatically attempts recovery after 60 seconds
+- **Transparent**: Works automatically without configuration
+- **Per-Service**: Separate circuit breakers for each external API
+
+### API Metrics
+
+All external API calls are automatically instrumented:
+
+- **Response Times**: Average response times per service
+- **Success Rates**: Track API reliability over time
+- **Debug Logging**: Enable debug logging to see metrics
+
+Enable debug logging to view metrics:
+
+```bash
+LOG_LEVEL=DEBUG asl_weather --dry-run
+```
+
 ## Caching
 
-Location lookups are cached to reduce API calls and improve performance:
+Location lookups use an LRU (Least Recently Used) cache:
 
-- **Root users**: `/var/cache/asl_weather_announce/postal_cache.json`
-- **Regular users**: `~/.cache/asl_weather_announce/postal_cache.json`
+- **Sized-Based**: Default 100 entries (configurable via `cache_size`)
+- **No TTL**: Entries persist until evicted (postal codes rarely change)
+- **Persistent**: Cache survives script restarts
+- **LRU Eviction**: When full, least recently used entries are removed first
 
-Cache entries are persistent across script runs.
+**Cache Locations:**
+
+- **Root users**: `/var/cache/asl_weather_announce/location_cache.json`
+- **Regular users**: `~/.cache/asl_weather_announce/location_cache.json`
+
+Clear the cache by deleting the cache file:
+
+```bash
+# As root
+rm /var/cache/asl_weather_announce/location_cache.json
+
+# As regular user
+rm ~/.cache/asl_weather_announce/location_cache.json
+```
 
 ## Troubleshooting
 
 ### Permission Denied
 
-```
+```text
 This script must be run as root or the asterisk user.
 ```
 
 **Solution**: Use `sudo` or run as the `asterisk` user:
+
 ```bash
 sudo asl_weather
 ```
 
 ### Missing Dependencies
 
-```
+```markdown
 Missing required dependencies:
   - requests (Python module)
   - asl-tts (system binary)
 ```
 
 **Solution**: Install missing dependencies:
+
 ```bash
 pip install requests
 sudo apt install asl-tts  # or equivalent
@@ -314,18 +413,19 @@ sudo apt install asl-tts  # or equivalent
 
 ### Voice Not Found
 
-```
+```text
 Warning: Voice 'en_GB-alan-low.onnx' not found in /var/lib/piper-tts
 ```
 
 **Solution**: Check available voices and update configuration:
+
 ```bash
 ls /var/lib/piper-tts/
 ```
 
 ### Postal Code Not Found
 
-```
+```text
 Could not find location for postal code 'XXXXX' in country 'XX'
 ```
 
@@ -338,10 +438,11 @@ Could not find location for postal code 'XXXXX' in country 'XX'
 ## Environment Variables
 
 | Variable | Description |
-|----------|-------------|
+| ---------- | ------------- |
 | `LOG_LEVEL` | Set logging level (DEBUG, INFO, WARNING, ERROR). Default: INFO |
 
 Example:
+
 ```bash
 LOG_LEVEL=DEBUG sudo asl_weather --dry-run
 ```
@@ -380,11 +481,13 @@ This project uses automated CI/CD pipelines to build and release packages:
 ### GitHub Actions
 
 The `.github/workflows/release.yml` workflow automatically:
+
 - Builds Debian packages for Trixie on every tag push
 - Creates source tarballs
 - Publishes releases with `.deb` and `.tar.gz` artifacts
 
 Trigger a release by pushing a tag:
+
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
@@ -400,8 +503,8 @@ This project is licensed under the terms specified in the LICENSE file.
 
 ## Author
 
-Peter Nearing - me@peternearing.ca
+Peter Nearing - <me@peternearing.ca>
 
 ## Version
 
-1.0.0
+1.0.1

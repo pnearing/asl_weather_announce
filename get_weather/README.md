@@ -11,6 +11,8 @@ A Python module for fetching current weather conditions using the Open-Meteo API
 - **WMO Weather Codes**: Translation of standardized weather codes to human-readable descriptions
 - **Coordinate Validation**: Built-in validation for latitude/longitude ranges
 - **No API Keys Required**: Uses the free Open-Meteo public API
+- **Circuit Breaker Protection**: Automatic circuit breaker prevents cascading failures when weather API is down
+- **API Metrics Collection**: Tracks weather API response times and success rates for monitoring
 
 ## Installation
 
@@ -242,6 +244,25 @@ print(weather_code_to_description(95))  # "with a thunderstorm"
 - `requests`: HTTP client library for API calls
 - `dataclasses`: Data structure definitions (Python 3.7+)
 - `typing`: Type hints (Python 3.5+)
+
+### Circuit Breaker Protection
+
+The module includes automatic circuit breaker protection for the Open-Meteo API:
+
+- **Automatic Failover**: Circuit opens after 5 consecutive failures
+- **Self-Healing**: Circuit automatically attempts recovery after 60 seconds
+- **Metrics Collection**: Tracks API response times and success rates
+- **Transparent Operation**: Works automatically without configuration
+
+When the circuit is open, subsequent calls will raise `CircuitBreakerOpenError` immediately without making API calls, allowing your application to handle the failure gracefully.
+
+### API Metrics
+
+All weather API calls are automatically instrumented with metrics:
+
+- **Response Time Tracking**: Average response times for weather API
+- **Success/Failure Rates**: Track API reliability
+- **Call History**: Maintains rolling window of recent calls
 
 ## Error Handling Strategy
 

@@ -22,7 +22,7 @@ __all__ = [
     "weather_code_to_description",
 ]
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 

@@ -5,7 +5,7 @@ This module provides the main PostalLookup class for performing postal code look
 using multiple geocoding services with comprehensive error handling.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
