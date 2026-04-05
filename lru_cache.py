@@ -201,7 +201,10 @@ class LRUCache:
             return
         
         try:
-            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+            # Ensure parent directories exist
+            parent_dir = self.cache_file.parent
+            if parent_dir:
+                parent_dir.mkdir(parents=True, exist_ok=True)
             
             with self._lock:
                 data = dict(self._cache)

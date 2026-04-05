@@ -268,9 +268,9 @@ class TestCachePersistence(unittest.TestCase):
     
     def tearDown(self):
         """Clean up test fixtures."""
-        for f in Path(self.temp_dir).iterdir():
-            f.unlink()
-        os.rmdir(self.temp_dir)
+        import shutil
+        if Path(self.temp_dir).exists():
+            shutil.rmtree(self.temp_dir)
     
     def test_corrupt_cache_file(self):
         """Test handling of corrupt cache file."""

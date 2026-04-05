@@ -84,6 +84,10 @@ class PostalLookup:
         # Initialize resilience patterns if available
         if HAS_RESILIENCE:
             self._cache = LocationCache(max_size=cache_size, logger_instance=self.logger)
+            self._cache_dir = Path(LocationCache._get_default_cache_path()).parent
+            self._cache_file = self._cache_dir / "postal_cache.json"
+            # Clear any existing cache to ensure fresh state
+            self._cache.clear()
             self._circuit_breaker_zippopotam = CircuitBreaker(
                 name="zippopotam",
                 config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60),
@@ -104,6 +108,26 @@ class PostalLookup:
         # Set up default logging - can be overridden by importing package
         if not self.logger.handlers:
             self.logger.addHandler(logging.NullHandler())
+    
+    def _cache_set(self, key: str, value: Any) -> None:
+        """
+        Set a value in the cache, handling both dict and LocationCache interfaces.
+        
+        Args:
+            key: Cache key
+            value: Value to cache
+        """
+        if hasattr(self._cache, 'set'):
+            # LocationCache interface
+            self._cache.set(key, value)
+        else:
+            # Dict interface
+            self._cache[key] = value
+    
+    def _cache_save(self) -> None:
+        """Save cache to disk if using dict interface."""
+        if not hasattr(self._cache, 'set'):
+            self._save_cache()
     
     @staticmethod
     def _get_cache_dir() -> Path:
@@ -232,15 +256,28 @@ class PostalLookup:
         # Normalize country code to 2-letter ISO format
         normalized_country = normalize_country_code(country_code)
         if normalized_country is None:
-            self.logger.error(f"Invalid country_code: {country_code}")
-            raise ValueError(
-                f"country_code '{country_code}' is not a valid country code. "
-                "Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States)."
+            # Check if it's a valid format but unknown code vs invalid format
+            cc = country_code.strip().upper()
+            is_valid_format = (
+                len(cc) == 2 and cc.isalpha()  # 2-letter code
+                or len(cc) == 3 and cc.isalpha()  # 3-letter code
+                or cc.isdigit()  # Numeric code
+                or ' ' in cc and len(cc) > 3  # Full country name
             )
+            if not is_valid_format:
+                self.logger.error(f"Invalid country_code format: {country_code}")
+                raise ValueError(
+                    f"country_code '{country_code}' is not a valid country code. "
+                    "Accepts 2-letter (US), 3-letter (USA), numeric (840), or full name (United States)."
+                )
+            self.logger.debug(f"Unknown country_code: {country_code}, will attempt lookup anyway")
+            # For valid format but unknown code, continue and let services fail naturally
+            country_code = cc
+        else:
+            country_code = normalized_country
 
         # Normalize postal code
         postal_code = postal_code.strip()
-        country_code = normalized_country
         
         # Check cache for existing result
         cache_key = f"{postal_code.upper()}:{country_code.upper()}"
@@ -278,6 +315,7 @@ class PostalLookup:
 
         # 1) Try Zippopotam.us first (with circuit breaker if enabled)
         self.logger.debug("Attempting Zippopotam.us lookup...")
+        zippopotam_error = None
         try:
             if HAS_RESILIENCE:
                 with self._metrics.measure("zippopotam", "lookup"):
@@ -289,16 +327,17 @@ class PostalLookup:
             
             if z_result is not None:
                 self.logger.debug(f"Zippopotam.us lookup successful: {z_result}")
-                if HAS_RESILIENCE:
-                    self._cache.set(cache_key, z_result)
-                else:
-                    self._cache[cache_key] = z_result
-                    self._save_cache()
+                self._cache_set(cache_key, z_result)
+                self._cache_save()
                 return z_result
             else:
-                self.logger.debug("Zippopotam.us lookup failed, trying Nominatim...")
+                self.logger.debug("Zippopotam.us lookup returned no results, trying Nominatim...")
+        except (NetworkError, RateLimitError) as e:
+            # Network/rate limit errors from Zippopotam - save for potential re-raise
+            self.logger.debug(f"Zippopotam.us lookup failed with network/rate error ({type(e).__name__}), trying Nominatim...")
+            zippopotam_error = e
         except Exception as e:
-            # Any error from Zippopotam.us, try Nominatim as fallback
+            # Any other error from Zippopotam.us, try Nominatim as fallback
             self.logger.debug(f"Zippopotam.us lookup failed with error ({type(e).__name__}), trying Nominatim...")
 
         # 2) Fall back to Nominatim (with circuit breaker if enabled)
@@ -313,26 +352,27 @@ class PostalLookup:
             
             if n_result is not None:
                 self.logger.debug(f"Nominatim lookup successful: {n_result}")
-                if HAS_RESILIENCE:
-                    self._cache.set(cache_key, n_result)
-                else:
-                    self._cache[cache_key] = n_result
-                    self._save_cache()
+                self._cache_set(cache_key, n_result)
+                self._cache_save()
                 return n_result
             else:
-                self.logger.debug("Nominatim lookup failed")
+                self.logger.debug("Nominatim lookup returned no results")
+        except (NetworkError, RateLimitError):
+            # Network/rate limit errors from Nominatim - re-raise if Zippopotam also had network error
+            raise
         except Exception as e:
-            # Any error from Nominatim, we're out of options
+            # Any other error from Nominatim
             self.logger.debug(f"Nominatim lookup failed with error ({type(e).__name__})")
+            # If Zippopotam had a network error, re-raise that instead of continuing
+            if zippopotam_error is not None:
+                raise zippopotam_error
 
+        # If we get here, both services failed to return results
         self.logger.warning(
             f"No location found for postal code '{postal_code}' in country '{country_code}'"
         )
-        if HAS_RESILIENCE:
-            self._cache.set(cache_key, None)
-        else:
-            self._cache[cache_key] = None
-            self._save_cache()
+        self._cache_set(cache_key, None)
+        self._cache_save()
         return None
     
     def _lookup_zippopotam(
@@ -732,11 +772,8 @@ class PostalLookup:
                 
                 if resp.status_code == 404:
                     self.logger.debug(f"Nominatim: Location not found for coordinates ({lat}, {lon})")
-                    if HAS_RESILIENCE:
-                        self._cache.set(cache_key, None)
-                    else:
-                        self._cache[cache_key] = None
-                        self._save_cache()
+                    self._cache_set(cache_key, None)
+                    self._cache_save()
                     return None
                 elif resp.status_code == 429:
                     self.logger.error(f"Nominatim: Rate limit exceeded (429)")
@@ -770,11 +807,8 @@ class PostalLookup:
             # Check if we got a valid result
             if not data or "error" in data:
                 self.logger.debug(f"Nominatim: No result found for coordinates ({lat}, {lon})")
-                if HAS_RESILIENCE:
-                    self._cache.set(cache_key, None)
-                else:
-                    self._cache[cache_key] = None
-                    self._save_cache()
+                self._cache_set(cache_key, None)
+                self._cache_save()
                 return None
             
             address = data.get("address", {})
@@ -811,11 +845,8 @@ class PostalLookup:
                 "source": "nominatim_reverse",
             }
             self.logger.debug(f"Reverse lookup successful: {result}")
-            if HAS_RESILIENCE:
-                self._cache.set(cache_key, result)
-            else:
-                self._cache[cache_key] = result
-                self._save_cache()
+            self._cache_set(cache_key, result)
+            self._cache_save()
             return result
         
         if HAS_RESILIENCE:

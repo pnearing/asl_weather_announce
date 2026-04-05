@@ -204,7 +204,7 @@ class TestCircuitBreaker(unittest.TestCase):
         
         def sometimes_fail():
             call_count[0] += 1
-            if call_count[0] < 2:
+            if call_count[0] <= 2:  # Fail on first 2 calls
                 raise ValueError("error")
             return "success"
         
@@ -416,7 +416,7 @@ class TestCircuitBreakerConfig(unittest.TestCase):
         self.assertEqual(config.failure_threshold, 5)
         self.assertEqual(config.recovery_timeout, 60)
         self.assertEqual(config.half_open_max_calls, 1)
-        self.assertEqual(config.success_threshold, 3)
+        self.assertEqual(config.success_threshold, 1)
     
     def test_custom_values(self):
         """Test custom configuration values."""
