@@ -78,6 +78,17 @@ sudo chmod 664 /var/log/asl_weather/asl_weather.log
 
 **Note:** These steps are handled automatically when installing via the Debian package.
 
+### Log Rotation Setup (Manual Install)
+
+When installing manually, also set up log rotation to prevent the log file from growing indefinitely:
+
+```bash
+# Copy the logrotate configuration
+sudo cp system/asl-weather-announce.logrotate /etc/logrotate.d/asl-weather-announce
+```
+
+This rotates logs daily, keeping 14 days of compressed backups. Requires the `logrotate` package (typically installed by default on Debian systems).
+
 ## Quick Start
 
 1. **Copy the example configuration:**

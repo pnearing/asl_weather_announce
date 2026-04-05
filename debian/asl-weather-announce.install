@@ -1,2 +1,3 @@
 system/asl-weather.service etc/systemd/system/
 system/asl-weather.timer etc/systemd/system/
+system/asl-weather-announce.logrotate etc/logrotate.d/asl-weather-announce
