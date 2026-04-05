@@ -62,6 +62,7 @@ Command Line Options:
     -d, --say-date            Announce current date before weather (overrides config)
     -D, --no-say-date         Do not announce current date (overrides config)
     --dry-run                 Print announcement text instead of sending to asl-tts
+    --test-config             Validate configuration and exit without making API calls or announcements
 
 Location Specification:
     Locations can be specified in two ways:
@@ -311,6 +312,12 @@ Examples:
         "--dry-run",
         action="store_true",
         help="Print the announcement text instead of sending it to asl-tts"
+    )
+
+    parser.add_argument(
+        "--test-config",
+        action="store_true",
+        help="Validate configuration and exit without making API calls or announcements"
     )
     
     parser.add_argument(
@@ -648,7 +655,40 @@ def main() -> int:
     
     # Resolve configuration (CLI overrides config file)
     config = resolve_configuration(cli_args)
-    
+
+    # Handle --test-config mode: validate config and exit without API calls
+    if cli_args.test_config:
+        print("Configuration validation mode - no API calls will be made.")
+        print()
+        print("Configuration Summary:")
+        print(f"  Config file: {cli_args.config}")
+        print(f"  Log file: {config.get('log_file') or 'console (default)'}")
+        print()
+        print("  Location:")
+        if config.get('latitude') is not None and config.get('longitude') is not None:
+            print(f"    Mode: Coordinates (lat={config['latitude']}, lon={config['longitude']})")
+            if config.get('location_name'):
+                print(f"    Location name: {config['location_name']}")
+        else:
+            print(f"    Postal code: {config['postal_code']}")
+            print(f"    Country code: {config['country_code']}")
+        print()
+        print("  ASL Settings:")
+        print(f"    Node number: {config['node_number']}")
+        print()
+        print("  'asl-tts' Settings:")
+        print(f"    Voice: {config.get('voice') or 'default'}")
+        print(f"    Voice directory: {config['voice_dir']}")
+        print()
+        print("  Announcement Options:")
+        print(f"    Temperature unit: {config['temperature_unit']}")
+        print(f"    Say time: {'enabled' if config.get('say_time') else 'disabled'}")
+        print(f"    Say date: {'enabled' if config.get('say_date') else 'disabled'}")
+        print(f"    Timezone: {config.get('timezone') or 'local (default)'}")
+        print()
+        print("Configuration is valid.")
+        return 0
+
     # Reconfigure logging if log_file is specified in config
     if config['log_file'] and not cli_args.log_file:
         # Reconfigure to log to file

@@ -45,7 +45,7 @@ source venv/bin/activate
 pip install -r developer_requirements.txt
 ```
 
-### Running Tests (When tests are implemented)
+### Running Tests
 
 ```bash
 # Run all tests
@@ -227,7 +227,7 @@ logger.error(f"Invalid coordinates: {e}")
 
 ## Testing
 
-### Test Requirements (When tests are implemented)
+### Test Requirements
 
 - All new features must include tests
 - Bug fixes must include regression tests

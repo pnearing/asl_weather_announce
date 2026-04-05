@@ -35,10 +35,10 @@
 
 ## Testing & Quality
 
-- [ ] Add unit tests for location lookup
-- [ ] Add unit tests for weather data parsing
-- [ ] Add integration tests with mocked APIs
-- [ ] Add test mode that validates config without making announcements
+- [x] Add unit tests for location lookup
+- [x] Add unit tests for weather data parsing
+- [x] Add integration tests with mocked APIs
+- [x] Add test mode that validates config without making announcements (--test-config flag)
 
 ## Documentation
 
