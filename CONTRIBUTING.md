@@ -12,7 +12,6 @@ Thank you for your interest in contributing to ASL Weather Announce! This docume
 - [Submitting Changes](#submitting-changes)
 - [Release Process](#release-process)
 
-
 ## Getting Started
 
 1. Fork the repository on GitHub
@@ -73,10 +72,12 @@ python asl_weather --dry-run -p N6A3K7 -c CA -n 12345
 We follow PEP 8 with the following specific conventions:
 
 #### Line Length
+
 - Maximum line length: **100 characters**
 - For docstrings and comments: **72 characters**
 
 #### Indentation
+
 - Use **4 spaces** per indentation level
 - Never use tabs
 
