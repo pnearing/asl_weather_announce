@@ -571,4 +571,5 @@ Peter Nearing - <me@peternearing.ca>
 
 ## Version
 
-1.0.1
+1.0.1 - Implemented reslience and back off's.
+1.0.2 - Added pre and post announcements, and output to an audio file. Add systemd service and timer, as well as crontab examples.

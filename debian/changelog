@@ -1,4 +1,14 @@
-asl-weather-announce (1.0.1-1) unstable; urgency=medium
+asl-weather-announce (1.0.2-1) trixie; urgency=medium
+
+  * Added pre-announcement and post-announcement options.
+  * Added command line options -b/--pre-announcement and -a/--post-announcement.
+  * Added config file options pre_announcement and post_announcement.
+  * Added audio file output option via -f/--output-file and config file output_file.
+  * Updated documentation with pre/post announcement examples.
+
+ -- Peter Nearing <me@peternearing.ca>  Sun, 05 Apr 2026 10:00:00 -0400
+
+asl-weather-announce (1.0.1-1) trixie; urgency=medium
 
   * New release with resilience patterns and caching improvements.
   * Added LRU cache for location lookups with configurable size.
@@ -10,7 +20,7 @@ asl-weather-announce (1.0.1-1) unstable; urgency=medium
 
  -- Peter Nearing <me@peternearing.ca>  Fri, 04 Apr 2026 21:30:00 -0400
 
-asl-weather-announce (1.0.0-1) unstable; urgency=medium
+asl-weather-announce (1.0.0-1) trixie; urgency=medium
 
   * Initial release.
   * Debian packaging for ASL Weather Announce.
