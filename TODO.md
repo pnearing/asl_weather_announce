@@ -4,7 +4,6 @@
 
 - [ ] Add severe weather alerts/warnings integration
 - [ ] Add weather forecast support (today, tomorrow, 3-day outlook)
-- [ ] Support multiple location profiles (home, travel destinations)
 - [ ] Add wind speed and direction as an optional detail to weather announcements
 - [ ] Add humidity and air pressure as optional details
 - [ ] Add sunrise/sunset time announcements
@@ -29,7 +28,7 @@
 ## System Integration
 
 - [x] Add systemd service / timer file example, or cron job example
-- [ ] Add log rotation configuration example
+- [x] Add log rotation configuration example
 - [ ] Add ASL node status check before announcement
 - [ ] Add repeater COS/busy detection to avoid interrupting traffic
 
