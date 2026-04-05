@@ -25,6 +25,14 @@ from .exceptions import (
 )
 from .country_codes import normalize_country_code
 
+# Import resilience patterns
+try:
+    from lru_cache import LocationCache
+    from resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    HAS_RESILIENCE = True
+except ImportError:
+    HAS_RESILIENCE = False
+
 
 class PostalLookup:
     """
@@ -58,6 +66,7 @@ class PostalLookup:
         timeout: float = 10.0,
         user_agent: str = f"postal-lookup/{__version__} (contact: {__author__} [<{__email__}>])",
         logger: Optional[logging.Logger] = None,
+        cache_size: int = 100,
     ):
         """
         Initialize PostalLookup instance.
@@ -66,16 +75,31 @@ class PostalLookup:
             timeout: Default timeout for requests in seconds (default: 10.0)
             user_agent: Default user agent for HTTP requests
             logger: Optional logger instance for debugging
+            cache_size: Maximum number of entries to cache (default: 100)
         """
         self.timeout = timeout
         self.user_agent = user_agent
         self.logger = logger or logging.getLogger(__name__)
-        self._cache: Dict[str, Optional[Dict[str, Any]]] = {}
-        self._cache_dir = self._get_cache_dir()
-        self._cache_file = Path(os.path.join(self._cache_dir, "postal_cache.json"))
         
-        # Load existing cache from disk
-        self._load_cache()
+        # Initialize resilience patterns if available
+        if HAS_RESILIENCE:
+            self._cache = LocationCache(max_size=cache_size, logger_instance=self.logger)
+            self._circuit_breaker_zippopotam = CircuitBreaker(
+                name="zippopotam",
+                config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60),
+                logger_instance=self.logger,
+            )
+            self._circuit_breaker_nominatim = CircuitBreaker(
+                name="nominatim",
+                config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60),
+                logger_instance=self.logger,
+            )
+            self._metrics = APIMetrics()
+        else:
+            self._cache: Dict[str, Optional[Dict[str, Any]]] = {}
+            self._cache_dir = self._get_cache_dir()
+            self._cache_file = Path(os.path.join(self._cache_dir, "postal_cache.json"))
+            self._load_cache()
         
         # Set up default logging - can be overridden by importing package
         if not self.logger.handlers:
@@ -220,9 +244,24 @@ class PostalLookup:
         
         # Check cache for existing result
         cache_key = f"{postal_code.upper()}:{country_code.upper()}"
-        if cache_key in self._cache:
-            self.logger.debug(f"Cache hit for '{cache_key}'")
-            return self._cache[cache_key]
+        
+        if HAS_RESILIENCE:
+            cached_result = self._cache.get(cache_key)
+            if cached_result is not None:
+                self.logger.debug(f"Cache hit for '{cache_key}'")
+                return cached_result
+            elif cache_key in self._cache.keys():
+                self.logger.debug(f"Cache hit (negative) for '{cache_key}'")
+                return None
+        else:
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                if cached_result is not None:
+                    self.logger.debug(f"Cache hit for '{cache_key}'")
+                    return cached_result
+                else:
+                    self.logger.debug(f"Cache hit (negative) for '{cache_key}'")
+                    return None
         
         self.logger.debug(
             f"Normalized inputs - postal_code: '{postal_code}', country_code: '{country_code}'"
@@ -237,40 +276,63 @@ class PostalLookup:
         
         self.logger.debug(f"Created session with headers: {session.headers}")
 
-        # 1) Try Zippopotam.us first
+        # 1) Try Zippopotam.us first (with circuit breaker if enabled)
         self.logger.debug("Attempting Zippopotam.us lookup...")
         try:
-            z_result = self._lookup_zippopotam(session, postal_code, country_code, request_timeout)
+            if HAS_RESILIENCE:
+                with self._metrics.measure("zippopotam", "lookup"):
+                    z_result = self._circuit_breaker_zippopotam.call(
+                        self._lookup_zippopotam, session, postal_code, country_code, request_timeout
+                    )
+            else:
+                z_result = self._lookup_zippopotam(session, postal_code, country_code, request_timeout)
+            
             if z_result is not None:
                 self.logger.debug(f"Zippopotam.us lookup successful: {z_result}")
-                self._cache[cache_key] = z_result
-                self._save_cache()
+                if HAS_RESILIENCE:
+                    self._cache.set(cache_key, z_result)
+                else:
+                    self._cache[cache_key] = z_result
+                    self._save_cache()
                 return z_result
             else:
                 self.logger.debug("Zippopotam.us lookup failed, trying Nominatim...")
-        except PostalLookupError:
+        except Exception as e:
             # Any error from Zippopotam.us, try Nominatim as fallback
-            self.logger.debug("Zippopotam.us lookup failed with error, trying Nominatim...")
+            self.logger.debug(f"Zippopotam.us lookup failed with error ({type(e).__name__}), trying Nominatim...")
 
-        # 2) Fall back to Nominatim
+        # 2) Fall back to Nominatim (with circuit breaker if enabled)
         try:
-            n_result = self._lookup_nominatim(session, postal_code, country_code, request_timeout)
+            if HAS_RESILIENCE:
+                with self._metrics.measure("nominatim", "lookup"):
+                    n_result = self._circuit_breaker_nominatim.call(
+                        self._lookup_nominatim, session, postal_code, country_code, request_timeout
+                    )
+            else:
+                n_result = self._lookup_nominatim(session, postal_code, country_code, request_timeout)
+            
             if n_result is not None:
                 self.logger.debug(f"Nominatim lookup successful: {n_result}")
-                self._cache[cache_key] = n_result
-                self._save_cache()
+                if HAS_RESILIENCE:
+                    self._cache.set(cache_key, n_result)
+                else:
+                    self._cache[cache_key] = n_result
+                    self._save_cache()
                 return n_result
             else:
                 self.logger.debug("Nominatim lookup failed")
-        except PostalLookupError:
+        except Exception as e:
             # Any error from Nominatim, we're out of options
-            self.logger.debug("Nominatim lookup failed with error")
+            self.logger.debug(f"Nominatim lookup failed with error ({type(e).__name__})")
 
         self.logger.warning(
             f"No location found for postal code '{postal_code}' in country '{country_code}'"
         )
-        self._cache[cache_key] = None
-        self._save_cache()
+        if HAS_RESILIENCE:
+            self._cache.set(cache_key, None)
+        else:
+            self._cache[cache_key] = None
+            self._save_cache()
         return None
     
     def _lookup_zippopotam(
@@ -624,9 +686,24 @@ class PostalLookup:
         
         # Check cache for existing result
         cache_key = f"reverse:{lat:.6f}:{lon:.6f}"
-        if cache_key in self._cache:
-            self.logger.debug(f"Cache hit for '{cache_key}'")
-            return self._cache[cache_key]
+        
+        if HAS_RESILIENCE:
+            cached_result = self._cache.get(cache_key)
+            if cached_result is not None:
+                self.logger.debug(f"Cache hit for '{cache_key}'")
+                return cached_result
+            elif cache_key in self._cache.keys():
+                self.logger.debug(f"Cache hit (negative) for '{cache_key}'")
+                return None
+        else:
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                if cached_result is not None:
+                    self.logger.debug(f"Cache hit for '{cache_key}'")
+                    return cached_result
+                else:
+                    self.logger.debug(f"Cache hit (negative) for '{cache_key}'")
+                    return None
         
         # Create session for this request
         session = requests.Session()
@@ -635,98 +712,114 @@ class PostalLookup:
             "Accept": "application/json",
         })
         
-        # Use Nominatim reverse geocoding
-        url = "https://nominatim.openstreetmap.org/reverse"
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "format": "jsonv2",
-            "addressdetails": 1,
-        }
-        
-        self.logger.debug(f"Nominatim reverse URL: {url}")
-        self.logger.debug(f"Nominatim params: {params}")
-        
-        try:
-            self.logger.debug(f"Making GET request to Nominatim with timeout {request_timeout}s")
-            resp = session.get(url, params=params, timeout=request_timeout)
-            self.logger.debug(f"Nominatim response status: {resp.status_code}")
+        # Use Nominatim reverse geocoding (with circuit breaker if enabled)
+        def _do_reverse_lookup():
+            url = "https://nominatim.openstreetmap.org/reverse"
+            params = {
+                "lat": lat,
+                "lon": lon,
+                "format": "jsonv2",
+                "addressdetails": 1,
+            }
             
-            if resp.status_code == 404:
-                self.logger.debug(f"Nominatim: Location not found for coordinates ({lat}, {lon})")
-                self._cache[cache_key] = None
-                self._save_cache()
-                return None
-            elif resp.status_code == 429:
-                self.logger.error(f"Nominatim: Rate limit exceeded (429)")
-                raise RateLimitError(f"Rate limit exceeded for Nominatim API")
-            elif resp.status_code == 403:
-                self.logger.error(f"Nominatim: Access forbidden (403) - likely rate limiting")
-                raise RateLimitError(f"Access forbidden for Nominatim API - likely rate limiting")
-            elif resp.status_code >= 500:
-                self.logger.error(f"Nominatim: Server error {resp.status_code}")
-                raise APIResponseError(f"Nominatim server error: {resp.status_code}")
-            
-            resp.raise_for_status()
+            self.logger.debug(f"Nominatim reverse URL: {url}")
+            self.logger.debug(f"Nominatim params: {params}")
             
             try:
-                data = resp.json()
-            except ValueError as e:
-                self.logger.error(f"Nominatim: Invalid JSON response: {e}")
-                raise APIResponseError(f"Invalid JSON response from Nominatim: {e}")
+                self.logger.debug(f"Making GET request to Nominatim with timeout {request_timeout}s")
+                resp = session.get(url, params=params, timeout=request_timeout)
+                self.logger.debug(f"Nominatim response status: {resp.status_code}")
+                
+                if resp.status_code == 404:
+                    self.logger.debug(f"Nominatim: Location not found for coordinates ({lat}, {lon})")
+                    if HAS_RESILIENCE:
+                        self._cache.set(cache_key, None)
+                    else:
+                        self._cache[cache_key] = None
+                        self._save_cache()
+                    return None
+                elif resp.status_code == 429:
+                    self.logger.error(f"Nominatim: Rate limit exceeded (429)")
+                    raise RateLimitError(f"Rate limit exceeded for Nominatim API")
+                elif resp.status_code == 403:
+                    self.logger.error(f"Nominatim: Access forbidden (403) - likely rate limiting")
+                    raise RateLimitError(f"Access forbidden for Nominatim API - likely rate limiting")
+                elif resp.status_code >= 500:
+                    self.logger.error(f"Nominatim: Server error {resp.status_code}")
+                    raise APIResponseError(f"Nominatim server error: {resp.status_code}")
+                
+                resp.raise_for_status()
+                
+                try:
+                    data = resp.json()
+                except ValueError as e:
+                    self.logger.error(f"Nominatim: Invalid JSON response: {e}")
+                    raise APIResponseError(f"Invalid JSON response from Nominatim: {e}")
+                
+                self.logger.debug(f"Nominatim response data: {data}")
+            except requests.exceptions.Timeout as e:
+                self.logger.error(f"Nominatim: Request timeout after {request_timeout}s: {e}")
+                raise NetworkError(f"Request timeout to Nominatim: {e}")
+            except requests.exceptions.ConnectionError as e:
+                self.logger.error(f"Nominatim: Connection error: {e}")
+                raise NetworkError(f"Connection error to Nominatim: {e}")
+            except requests.exceptions.RequestException as e:
+                self.logger.error(f"Nominatim: Network request failed: {e}")
+                raise NetworkError(f"Network error accessing Nominatim: {e}")
             
-            self.logger.debug(f"Nominatim response data: {data}")
-        except requests.exceptions.Timeout as e:
-            self.logger.error(f"Nominatim: Request timeout after {request_timeout}s: {e}")
-            raise NetworkError(f"Request timeout to Nominatim: {e}")
-        except requests.exceptions.ConnectionError as e:
-            self.logger.error(f"Nominatim: Connection error: {e}")
-            raise NetworkError(f"Connection error to Nominatim: {e}")
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Nominatim: Network request failed: {e}")
-            raise NetworkError(f"Network error accessing Nominatim: {e}")
+            # Check if we got a valid result
+            if not data or "error" in data:
+                self.logger.debug(f"Nominatim: No result found for coordinates ({lat}, {lon})")
+                if HAS_RESILIENCE:
+                    self._cache.set(cache_key, None)
+                else:
+                    self._cache[cache_key] = None
+                    self._save_cache()
+                return None
+            
+            address = data.get("address", {})
+            self.logger.debug(f"Address details: {address}")
+            
+            # Extract city name from various possible field names in address hierarchy
+            city = (
+                address.get("city")
+                or address.get("town")
+                or address.get("village")
+                or address.get("municipality")
+                or address.get("hamlet")
+                or address.get("suburb")
+                or address.get("county")
+            )
+            self.logger.debug(f"Extracted city: '{city}'")
+            
+            # Extract state/province from various possible field names
+            state_province = (
+                address.get("state")
+                or address.get("province")
+                or address.get("region")
+                or address.get("state_district")
+            )
+            self.logger.debug(f"Extracted state_province: '{state_province}'")
+            
+            result = {
+                "city": city,
+                "state_province": state_province,
+                "country": address.get("country"),
+                "country_code": address.get("country_code", "").upper() or None,
+                "latitude": lat,
+                "longitude": lon,
+                "source": "nominatim_reverse",
+            }
+            self.logger.debug(f"Reverse lookup successful: {result}")
+            if HAS_RESILIENCE:
+                self._cache.set(cache_key, result)
+            else:
+                self._cache[cache_key] = result
+                self._save_cache()
+            return result
         
-        # Check if we got a valid result
-        if not data or "error" in data:
-            self.logger.debug(f"Nominatim: No result found for coordinates ({lat}, {lon})")
-            self._cache[cache_key] = None
-            self._save_cache()
-            return None
-        
-        address = data.get("address", {})
-        self.logger.debug(f"Address details: {address}")
-        
-        # Extract city name from various possible field names in address hierarchy
-        city = (
-            address.get("city")
-            or address.get("town")
-            or address.get("village")
-            or address.get("municipality")
-            or address.get("hamlet")
-            or address.get("suburb")
-            or address.get("county")
-        )
-        self.logger.debug(f"Extracted city: '{city}'")
-        
-        # Extract state/province from various possible field names
-        state_province = (
-            address.get("state")
-            or address.get("province")
-            or address.get("region")
-            or address.get("state_district")
-        )
-        self.logger.debug(f"Extracted state_province: '{state_province}'")
-        
-        result = {
-            "city": city,
-            "state_province": state_province,
-            "country": address.get("country"),
-            "country_code": address.get("country_code", "").upper() or None,
-            "latitude": lat,
-            "longitude": lon,
-            "source": "nominatim_reverse",
-        }
-        self.logger.debug(f"Reverse lookup successful: {result}")
-        self._cache[cache_key] = result
-        self._save_cache()
-        return result
+        if HAS_RESILIENCE:
+            with self._metrics.measure("nominatim", "reverse_lookup"):
+                return self._circuit_breaker_nominatim.call(_do_reverse_lookup)
+        else:
+            return _do_reverse_lookup()

@@ -59,6 +59,13 @@ from dataclasses import dataclass
 from typing import Optional, Literal, Dict, Any
 import requests
 
+# Import resilience patterns
+try:
+    from resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    HAS_RESILIENCE = True
+except ImportError:
+    HAS_RESILIENCE = False
+
 try:
     from .exceptions import (
         WeatherLookupError,
@@ -204,6 +211,8 @@ def get_current_weather(
     temperature_unit: TemperatureUnit = "C",
     timeout: float = 10.0,
     user_agent: str = f"weather-module/{__version__} (contact: {__author__} [<{__email__}>])",
+    use_resilience: bool = True,
+    logger: Optional[Any] = None,
 ) -> CurrentWeatherResult:
     """
     Fetch current weather conditions using latitude/longitude.
@@ -217,6 +226,8 @@ def get_current_weather(
         temperature_unit: "C" or "F".
         timeout: HTTP timeout in seconds.
         user_agent: User-Agent header for HTTP requests.
+        use_resilience: Whether to enable circuit breaker, caching, and metrics.
+        logger: Optional logger instance.
 
     Returns:
         CurrentWeatherResult
@@ -247,6 +258,17 @@ def get_current_weather(
     if not (-180 <= longitude <= 180):
         raise InvalidLocationError(f"longitude {longitude} is out of valid range [-180, 180]")
 
+    # Initialize resilience components if enabled
+    circuit_breaker = None
+    metrics = None
+    if use_resilience and HAS_RESILIENCE:
+        circuit_breaker = CircuitBreaker(
+            name="open-meteo",
+            config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60),
+            logger_instance=logger,
+        )
+        metrics = APIMetrics()
+
     api_temp_unit = "celsius" if temperature_unit == "C" else "fahrenheit"
 
     url = "https://api.open-meteo.com/v1/forecast"
@@ -264,53 +286,65 @@ def get_current_weather(
         "Accept": "application/json",
     })
 
+    def _fetch_weather():
+        try:
+            response = session.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.Timeout as exc:
+            raise NetworkError(f"Weather API request timeout after {timeout}s: {exc}") from exc
+        except requests.exceptions.ConnectionError as exc:
+            raise NetworkError(f"Weather API connection error: {exc}") from exc
+        except requests.exceptions.RequestException as exc:
+            if hasattr(exc, 'response') and exc.response is not None:
+                if exc.response.status_code == 429:
+                    raise RateLimitError(f"Weather API rate limit exceeded: {exc}") from exc
+                elif exc.response.status_code == 403:
+                    raise RateLimitError(f"Weather API access forbidden - likely rate limiting: {exc}") from exc
+                elif exc.response.status_code >= 500:
+                    raise APIResponseError(f"Weather API server error {exc.response.status_code}: {exc}") from exc
+            raise NetworkError(f"Weather API request failed: {exc}") from exc
+        except ValueError as exc:
+            raise APIResponseError(f"Weather API returned invalid JSON: {exc}") from exc
+
+        current = data.get("current")
+        if not isinstance(current, dict):
+            raise APIResponseError("Weather API response is missing 'current' data")
+
+        temp = current.get("temperature_2m")
+        if temp is None:
+            raise APIResponseError("Weather API response is missing temperature_2m")
+
+        weather_code = current.get("weather_code")
+        is_day_raw = current.get("is_day")
+        is_day = bool(is_day_raw) if is_day_raw is not None else None
+
+        description = weather_code_to_description(weather_code, is_day=is_day)
+
+        return CurrentWeatherResult(
+            city=city.strip(),
+            state_province=(state_province.strip() if state_province else None),
+            country=(country.strip() if country else None),
+            latitude=latitude,
+            longitude=longitude,
+            temperature=float(temp),
+            temperature_unit=temperature_unit,
+            weather_code=int(weather_code) if weather_code is not None else None,
+            weather_description=description,
+            is_day=is_day,
+            raw=data,
+        )
+
+    # Execute with circuit breaker and metrics if enabled
     try:
-        response = session.get(url, params=params, timeout=timeout)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.Timeout as exc:
-        raise NetworkError(f"Weather API request timeout after {timeout}s: {exc}") from exc
-    except requests.exceptions.ConnectionError as exc:
-        raise NetworkError(f"Weather API connection error: {exc}") from exc
-    except requests.exceptions.RequestException as exc:
-        if hasattr(exc, 'response') and exc.response is not None:
-            if exc.response.status_code == 429:
-                raise RateLimitError(f"Weather API rate limit exceeded: {exc}") from exc
-            elif exc.response.status_code == 403:
-                raise RateLimitError(f"Weather API access forbidden - likely rate limiting: {exc}") from exc
-            elif exc.response.status_code >= 500:
-                raise APIResponseError(f"Weather API server error {exc.response.status_code}: {exc}") from exc
-        raise NetworkError(f"Weather API request failed: {exc}") from exc
-    except ValueError as exc:
-        raise APIResponseError(f"Weather API returned invalid JSON: {exc}") from exc
-
-    current = data.get("current")
-    if not isinstance(current, dict):
-        raise APIResponseError("Weather API response is missing 'current' data")
-
-    temp = current.get("temperature_2m")
-    if temp is None:
-        raise APIResponseError("Weather API response is missing temperature_2m")
-
-    weather_code = current.get("weather_code")
-    is_day_raw = current.get("is_day")
-    is_day = bool(is_day_raw) if is_day_raw is not None else None
-
-    description = weather_code_to_description(weather_code, is_day=is_day)
-
-    return CurrentWeatherResult(
-        city=city.strip(),
-        state_province=(state_province.strip() if state_province else None),
-        country=(country.strip() if country else None),
-        latitude=latitude,
-        longitude=longitude,
-        temperature=float(temp),
-        temperature_unit=temperature_unit,
-        weather_code=int(weather_code) if weather_code is not None else None,
-        weather_description=description,
-        is_day=is_day,
-        raw=data,
-    )
+        if circuit_breaker and metrics:
+            with metrics.measure("open-meteo", "forecast"):
+                return circuit_breaker.call(_fetch_weather)
+        else:
+            return _fetch_weather()
+    except Exception:
+        # Re-raise all exceptions (circuit breaker open, network errors, etc.)
+        raise
 
 
 def weather_code_to_description(

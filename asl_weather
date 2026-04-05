@@ -321,6 +321,12 @@ Examples:
     )
     
     parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Offline mode - only announce time/date without weather API calls"
+    )
+    
+    parser.add_argument(
         "-u", "--temperature-unit",
         type=str,
         choices=["C", "F"],
@@ -365,6 +371,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "say_date": False,
         "timezone": None,
         "temperature_unit": "C",
+        "offline": False,
+        "cache_size": 100,
     }
     
     if not os.path.exists(config_path):
@@ -396,6 +404,16 @@ def load_config(config_path: str) -> Dict[str, Any]:
             temp_unit = parser.get("asl_weather", "temperature_unit").strip().upper()
             if temp_unit in ("C", "F"):
                 config["temperature_unit"] = temp_unit
+        
+        if parser.has_option("asl_weather", "offline"):
+            offline_val = parser.get("asl_weather", "offline").strip().lower()
+            config["offline"] = offline_val in ("true", "1", "yes", "on")
+        
+        if parser.has_option("asl_weather", "cache_size"):
+            try:
+                config["cache_size"] = int(parser.get("asl_weather", "cache_size").strip())
+            except ValueError:
+                pass
     
     # Read location section
     if parser.has_section("location"):
@@ -473,6 +491,8 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "say_date": cli_args.say_date or file_config["say_date"],
         "timezone": file_config["timezone"],
         "temperature_unit": cli_args.temperature_unit or file_config["temperature_unit"] or "C",
+        "offline": cli_args.offline or file_config["offline"],
+        "cache_size": file_config["cache_size"],
     }
     
     # Check if latitude/longitude override is provided
@@ -528,7 +548,7 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
     return config
 
 
-def get_location(postal_code: str, country_code: str, logger: Optional[logging.Logger]) -> Dict[str, Any]:
+def get_location(postal_code: str, country_code: str, logger: Optional[logging.Logger], cache_size: int = 100) -> Dict[str, Any]:
     """
     Look up location information from postal code and country code.
     
@@ -538,6 +558,8 @@ def get_location(postal_code: str, country_code: str, logger: Optional[logging.L
     Args:
         postal_code: Postal or ZIP code to lookup.
         country_code: 2-letter ISO country code.
+        logger: Optional logger instance.
+        cache_size: Maximum number of entries to cache (default: 100).
         
     Returns:
         Dictionary containing location data with keys:
@@ -551,7 +573,7 @@ def get_location(postal_code: str, country_code: str, logger: Optional[logging.L
         SystemExit: If location lookup fails.
     """
     
-    lookup = PostalLookup(logger=logger)
+    lookup = PostalLookup(logger=logger, cache_size=cache_size)
     
     try:
         result = lookup.lookup(postal_code, country_code)
@@ -685,6 +707,7 @@ def main() -> int:
         print(f"    Say time: {'enabled' if config.get('say_time') else 'disabled'}")
         print(f"    Say date: {'enabled' if config.get('say_date') else 'disabled'}")
         print(f"    Timezone: {config.get('timezone') or 'local (default)'}")
+        print(f"    Offline mode: {'enabled' if config.get('offline') else 'disabled'}")
         print()
         print("Configuration is valid.")
         return 0
@@ -728,9 +751,19 @@ def main() -> int:
                 "longitude": config["longitude"],
             }
             logger.debug(f"Using configured location name: {config['location_name']}")
+        elif config.get("offline"):
+            # In offline mode, skip reverse geocoding
+            logger.debug("Offline mode enabled - skipping reverse geocoding")
+            location_data = {
+                "city": None,
+                "state_province": None,
+                "country": None,
+                "latitude": config["latitude"],
+                "longitude": config["longitude"],
+            }
         else:
             # Use configured coordinates and perform reverse lookup to get location name
-            lookup = PostalLookup(logger=logger)
+            lookup = PostalLookup(logger=logger, cache_size=config.get("cache_size", 100))
             try:
                 location_data = lookup.reverse_lookup(config["latitude"], config["longitude"])
                 if location_data is None:
@@ -758,18 +791,25 @@ def main() -> int:
                 }
         
     else:
-        # Get location data from postal code
-        location_data = get_location(config["postal_code"], config["country_code"], logger=logger)
+        # Get location data from postal code (unless in offline mode)
+        if not config.get("offline"):
+            location_data = get_location(config["postal_code"], config["country_code"], logger=logger, cache_size=config.get("cache_size", 100))
+        else:
+            # In offline mode, we don't need location data
+            location_data = {"city": None, "state_province": None, "country": None, "latitude": None, "longitude": None}
         
     # Clean up city name for TTS (remove parenthetical content like "(UWO)" from "London North (UWO)")
     if location_data.get("city"):
         location_data["city"] = location_data["city"].split("(")[0].strip()
     
-    # Get current weather for the location
-    weather = get_weather(location_data, temperature_unit=config.get("temperature_unit", "C"), logger=logger)
-    
-    # Build announcement text
-    announcement = weather.natural_language()
+    # Get current weather for the location (unless in offline mode)
+    if not config.get("offline"):
+        weather = get_weather(location_data, temperature_unit=config.get("temperature_unit", "C"), logger=logger)
+        # Build announcement text
+        announcement = weather.natural_language()
+    else:
+        logger.info("Offline mode enabled - skipping weather lookup")
+        announcement = ""
     
     # Add time and/or date to announcement if enabled
     time_parts = []

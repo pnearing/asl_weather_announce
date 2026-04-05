@@ -48,11 +48,11 @@
 
 ## Performance & Reliability
 
-- [ ] Implement exponential backoff for failed API requests
-- [ ] Add circuit breaker pattern for external services
-- [ ] Add metrics/logging for API usage and response times
-- [ ] Optimize cache size limits and TTL
-- [ ] Add offline mode with cached data only
+- [x] Implement exponential backoff for failed API requests
+- [x] Add circuit breaker pattern for external services
+- [x] Add metrics/logging for API usage and response times
+- [x] Optimize cache size limits and TTL
+- [x] Add offline mode, where only the time and date can be announced
 
 ## Internationalization
 
