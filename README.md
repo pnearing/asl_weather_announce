@@ -9,6 +9,7 @@ A Python-based weather announcement system for [AllStarLinkv3](https://www.allst
 - **Smart Geocoding**: Multi-service postal code lookup with automatic failover (Zippopotam.us → OpenStreetMap Nominatim)
 - **TTS-Optimized Output**: Natural language weather descriptions designed for speech synthesis
 - **Time & Date Announcements**: Optional current time and date announcements with timezone support
+- **Pre/Post Announcements**: Configurable text to announce before and after the main weather report
 - **LRU Caching**: Sized-based LRU cache for location lookups with configurable size
 - **Offline Mode**: Announce time/date only without weather API calls (useful for network outages)
 - **Circuit Breaker Protection**: Automatic circuit breakers prevent cascading failures when APIs are down
@@ -124,6 +125,8 @@ The configuration file uses INI format with the following sections:
 | `temperature_unit` | Temperature unit (`C` or `F`) | `C` |
 | `offline` | Offline mode - time/date only (`true`/`false`) | `false` |
 | `cache_size` | Location cache size (entries) | `100` |
+| `pre_announcement` | Text to announce before the main content | none |
+| `post_announcement` | Text to announce after the main content | none |
 
 ### `[location]` - Location Settings
 
@@ -197,6 +200,33 @@ postal_code = N6A 3K7
 country_code = CA
 ```
 
+### Configuration with Pre/Post Announcements
+
+Add custom text before and after the weather announcement:
+
+```ini
+[asl_weather]
+# Announce custom text before the weather
+pre_announcement = Attention please
+
+# Announce custom text after the weather
+post_announcement = Thank you for listening, 73
+```
+
+Output example:
+
+```text
+Attention please. Currently in London, Ontario it is 8 degrees Celsius with partly cloudy. Thank you for listening, 73.
+```
+
+Or via command line:
+
+```bash
+sudo asl_weather -b "Attention please" -a "73 and good bye"
+```
+
+### Configuration with Direct Coordinates
+
 ```ini
 [location]
 # Skip postal code lookup by providing direct coordinates
@@ -255,7 +285,7 @@ asl_weather --dry-run
 Output example:
 
 ```text
-Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontario it is 8 degrees Celsius with partly cloudy.
+Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontario it is 8 degrees Celsius and partly cloudy.
 ```
 
 ### Command Line Options
@@ -272,6 +302,8 @@ Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontari
 | `-T` | `--no-say-time` | Do not announce current time |
 | `-d` | `--say-date` | Announce current date |
 | `-D` | `--no-say-date` | Do not announce current date |
+| `-b` | `--pre-announcement TEXT` | Text to announce before main content |
+| `-a` | `--post-announcement TEXT` | Text to announce after main content |
 | | `--dry-run` | Print text only, don't broadcast |
 | | `--offline` | Offline mode - time/date only without weather API calls |
 

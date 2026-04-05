@@ -55,6 +55,16 @@
 # Example: cache_size = 100
 # cache_size = 100
 
+# Optional: Pre-announcement text
+# Text to announce before the main weather/time announcement
+# Example: pre_announcement = Attention please
+# pre_announcement =
+
+# Optional: Post-announcement text
+# Text to announce after the main weather/time announcement
+# Example: post_announcement = Thank you for listening, 73
+# post_announcement =
+
 [location]
 # Postal code or ZIP code for weather lookup
 # Examples: N6A 3K7 (Canada), 90210 (USA), SW1A 1AA (UK)

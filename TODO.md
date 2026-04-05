@@ -22,7 +22,7 @@
 
 ## Voice & Audio
 
-- [ ] Add pre-announcement, post-announcement, and tone/beep options
+- [x] Add pre-announcement and post-announcement options
 - [x] Add audio file output option (for manual review/testing)
 
 ## System Integration

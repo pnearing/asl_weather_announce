@@ -13,6 +13,7 @@ Features:
     - Natural language weather announcements optimized for TTS
     - Optional date and time announcements with timezone support
     - Configurable TTS voice selection via asl-tts
+    - Pre-announcement and post-announcement text options
     - Persistent disk caching for location lookups
     - Comprehensive logging with file or console output
     - Dry-run mode for testing without broadcasting
@@ -23,6 +24,7 @@ Usage:
     sudo asl_weather --config /path/to/custom.conf
     sudo asl_weather -p N6A3K7 -c CA -n 12345 --say-time --say-date
     sudo asl_weather --dry-run  # Preview announcement text only
+    sudo asl_weather --pre-announcement "Attention please" --post-announcement "73"
 
 Configuration:
     Default config path: /etc/asl_weather.conf
@@ -50,20 +52,22 @@ Configuration:
     voice_dir = /var/lib/piper-tts
 
 Command Line Options:
-    -C, --config PATH           Path to configuration file (default: /etc/asl_weather.conf)
-    -p, --postal-code CODE      Postal/ZIP code to lookup (overrides config)
-    -c, --country-code CODE     Country code - accepts 2-letter (CA), 3-letter (CAN),
-                                numeric (124), or full name (Canada). Case-insensitive.
-    -n, --node-number NUM       ASL node number for broadcast (overrides config)
-    -u, --temperature-unit UNIT Temperature unit - C for Celsius, F for Fahrenheit (overrides config)
-    -v, --voice VOICE           TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
-    -l, --log-file PATH         Path to log file (logs to file instead of terminal)
-    -t, --say-time              Announce current time before weather (overrides config)
-    -T, --no-say-time           Do not announce current time (overrides config)
-    -d, --say-date              Announce current date before weather (overrides config)
-    -D, --no-say-date           Do not announce current date (overrides config)
-    -f, --output-file FILE      Output speech to file (passed to asl-tts -f, no extension needed)
-    --test-config               Validate configuration and exit without making API calls or announcements
+    -C, --config PATH                   Path to configuration file (default: /etc/asl_weather.conf)
+    -p, --postal-code CODE              Postal/ZIP code to lookup (overrides config)
+    -c, --country-code CODE             Country code - accepts 2-letter (CA), 3-letter (CAN),
+                                        numeric (124), or full name (Canada). Case-insensitive.
+    -n, --node-number NUM               ASL node number for broadcast (overrides config)
+    -u, --temperature-unit UNIT         Temperature unit - C for Celsius, F for Fahrenheit (overrides config)
+    -v, --voice VOICE                   TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
+    -l, --log-file PATH                 Path to log file (logs to file instead of terminal)
+    -t, --say-time                      Announce current time before weather (overrides config)
+    -T, --no-say-time                   Do not announce current time (overrides config)
+    -d, --say-date                      Announce current date before weather (overrides config)
+    -D, --no-say-date                   Do not announce current date (overrides config)
+    -b, --pre-announcement TEXT         Text to announce before main content
+    -a, --post-announcement TEXT        Text to announce after main content
+    -f, --output-file FILE              Output speech to file (passed to asl-tts -f, no extension needed)
+    --test-config                       Validate configuration and exit without making API calls or announcements
 
 Location Specification:
     Locations can be specified in two ways:
@@ -337,7 +341,22 @@ Examples:
     parser.add_argument(
         "--offline",
         action="store_true",
+        dest="offline",
         help="Offline mode - only announce time/date without weather API calls"
+    )
+
+    parser.add_argument(
+        "-b", "--pre-announcement",
+        type=str,
+        dest="pre_announcement",
+        help="Text to announce before the main announcement (overrides config file)"
+    )
+
+    parser.add_argument(
+        "-a", "--post-announcement",
+        type=str,
+        dest="post_announcement",
+        help="Text to announce after the main announcement (overrides config file)"
     )
 
     return parser.parse_args()
@@ -381,6 +400,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
         "output_file": None,
         "offline": False,
         "cache_size": 100,
+        "pre_announcement": None,
+        "post_announcement": None,
     }
     
     if not os.path.exists(config_path):
@@ -425,6 +446,16 @@ def load_config(config_path: str) -> Dict[str, Any]:
                 config["cache_size"] = int(parser.get("asl_weather", "cache_size").strip())
             except ValueError:
                 pass
+
+        if parser.has_option("asl_weather", "pre_announcement"):
+            pre_val = parser.get("asl_weather", "pre_announcement").strip()
+            if pre_val:
+                config["pre_announcement"] = pre_val
+
+        if parser.has_option("asl_weather", "post_announcement"):
+            post_val = parser.get("asl_weather", "post_announcement").strip()
+            if post_val:
+                config["post_announcement"] = post_val
     
     # Read location section
     if parser.has_section("location"):
@@ -505,6 +536,8 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "output_file": cli_args.output_file or file_config["output_file"],
         "offline": cli_args.offline or file_config["offline"],
         "cache_size": file_config["cache_size"],
+        "pre_announcement": cli_args.pre_announcement or file_config["pre_announcement"],
+        "post_announcement": cli_args.post_announcement or file_config["post_announcement"],
     }
     
     # Check if latitude/longitude override is provided
@@ -756,6 +789,8 @@ def main() -> int:
         print(f"    Say time: {'enabled' if config.get('say_time') else 'disabled'}")
         print(f"    Say date: {'enabled' if config.get('say_date') else 'disabled'}")
         print(f"    Timezone: {config.get('timezone') or 'local (default)'}")
+        print(f"    Pre-announcement: {config.get('pre_announcement') or 'none (default)'}")
+        print(f"    Post-announcement: {config.get('post_announcement') or 'none (default)'}")
         print(f"  Output file: {config.get('output_file') or 'none (broadcast to node) (default)'}")
         print()
         print(f"    Offline mode: {'enabled' if config.get('offline') else 'disabled'}")
@@ -898,6 +933,14 @@ def main() -> int:
         # Prepend date/time to announcement
         if time_parts:
             announcement = f"{'. '.join(time_parts)}. {announcement}"
+
+    # Add pre-announcement at the beginning if configured
+    if config.get("pre_announcement"):
+        announcement = f"{config['pre_announcement']}. {announcement}"
+
+    # Add post-announcement at the end if configured
+    if config.get("post_announcement"):
+        announcement = f"{announcement}. {config['post_announcement']}."
     
     # Build asl-tts command line:
     asl_tts_cmd = []
