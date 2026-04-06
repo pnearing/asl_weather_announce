@@ -10,5 +10,13 @@ asl_weather/asl_weather_constants.py usr/lib/python3/dist-packages/asl_weather/
 asl_weather/asl_weather_cache.py usr/lib/python3/dist-packages/asl_weather/
 asl_weather/asl_weather_logging.py usr/lib/python3/dist-packages/asl_weather/
 asl_weather/asl_weather_resilience.py usr/lib/python3/dist-packages/asl_weather/
-asl_weather/data/*.json usr/lib/python3/dist-packages/asl_weather/data/
-get_weather/data/*.json usr/lib/python3/dist-packages/get_weather/data/
+asl_weather/get_weather/__init__.py usr/lib/python3/dist-packages/asl_weather/get_weather/
+asl_weather/get_weather/exceptions.py usr/lib/python3/dist-packages/asl_weather/get_weather/
+asl_weather/get_weather/weather_lookup.py usr/lib/python3/dist-packages/asl_weather/get_weather/
+asl_weather/get_weather/data/*.json usr/lib/python3/dist-packages/asl_weather/get_weather/data/
+asl_weather/get_location/__init__.py usr/lib/python3/dist-packages/asl_weather/get_location/
+asl_weather/get_location/country_codes.py usr/lib/python3/dist-packages/asl_weather/get_location/
+asl_weather/get_location/exceptions.py usr/lib/python3/dist-packages/asl_weather/get_location/
+asl_weather/get_location/postal_lookup.py usr/lib/python3/dist-packages/asl_weather/get_location/
+asl_weather/get_location/data/*.json usr/lib/python3/dist-packages/asl_weather/get_location/data/
+
