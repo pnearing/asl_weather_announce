@@ -712,11 +712,12 @@ def main() -> int:
     """
     # Parse CLI arguments first
     cli_args = parse_arguments()
-    
-    # Determine effective log file: CLI arg > config file > default
-    effective_log_file = cli_args.log_file
-    if not effective_log_file:
-        effective_log_file = DEFAULT_LOG_FILE
+
+    # Load config file early to check for log_file setting
+    file_config = load_config(cli_args.config)
+
+    # Determine effective log file: CLI arg > config file > None (console logging)
+    effective_log_file = cli_args.log_file or file_config["log_file"]
     
     # Configure logging based on effective log file
     if effective_log_file:
@@ -798,23 +799,6 @@ def main() -> int:
         print("Configuration is valid.")
         return 0
 
-    # Reconfigure logging if log_file is specified in config (and not overridden by CLI)
-    if config['log_file'] and not cli_args.log_file:
-        # Check if log file is writable (directory setup happens at install time)
-        if check_log_writable(config['log_file']):
-            # Reconfigure to log to file
-            for handler in logging.root.handlers[:]:
-                logging.root.removeHandler(handler)
-            logging.basicConfig(
-                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                handlers=[
-                    logging.FileHandler(config['log_file'])
-                ]
-            )
-        else:
-            logger.warning(f"Config log file {config['log_file']} is not writable, continuing with console logging")
-    
     # Check if the voice exists
     if config['voice']:
         voice_file_path = os.path.join(config['voice_dir'], config['voice'])
