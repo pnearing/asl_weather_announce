@@ -1,3 +1,16 @@
+asl-weather-announce (1.0.3-4) trixie; urgency=medium
+
+  * Fixed a bunch of issues with the debian package
+  * Updated dependencies and build scripts
+  * Improved error handling and logging
+  * Refactored a lot of code to be more maintainable
+  * Added more control over the output
+  * Added more configuration options
+  * Updated documentation
+  * Fixed github release bug.
+
+ -- Peter Nearing <me@peternearing.ca>  Sun, 05 Apr 2026 11:00:00 -0400
+
 asl-weather-announce (1.0.2-1) trixie; urgency=medium
 
   * Added pre-announcement and post-announcement options.
