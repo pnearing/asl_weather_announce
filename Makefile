@@ -56,15 +56,29 @@ clean:
 
 # Install locally (for testing)
 install:
-	install -D -m 755 asl_weather $(DESTDIR)/usr/bin/asl_weather
+	install -D -m 755 asl_weather.py $(DESTDIR)/usr/bin/asl_weather
 	install -D -m 644 config.ini.example $(DESTDIR)/etc/asl_weather.conf.example
 	# Install Python modules
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_weather
+	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_weather/data
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_location
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/get_location/data
 	install -m 644 get_weather/*.py $(DESTDIR)/usr/lib/python3/dist-packages/get_weather/
+	install -m 644 get_weather/data/*.json $(DESTDIR)/usr/lib/python3/dist-packages/get_weather/data/
 	install -m 644 get_location/*.py $(DESTDIR)/usr/lib/python3/dist-packages/get_location/
 	install -m 644 get_location/data/*.json $(DESTDIR)/usr/lib/python3/dist-packages/get_location/data/
+	# Install asl_weather package
+	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather
+	install -m 644 asl_weather/__init__.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_build_annoucement.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_checks.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_config.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_constants.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_cache.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_logging.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -m 644 asl_weather/asl_weather_resilience.py $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/
+	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/data
+	install -m 644 asl_weather/data/*.json $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather/data/
 
 # Lint the package
 lint:

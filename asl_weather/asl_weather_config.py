@@ -11,7 +11,7 @@ import os
 import sys
 from typing import Dict, Any
 
-from asl_weather_constants import DEFAULT_CONFIG_PATH, DEFAULT_VOICE_DIR, TRUE_WORDS
+from .asl_weather_constants import DEFAULT_CONFIG_PATH, DEFAULT_VOICE_DIR, TRUE_WORDS
 
 def _normalize_bool_word(text: str) -> str:
     return " ".join(text.strip().lower().split())

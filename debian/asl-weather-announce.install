@@ -1,3 +1,13 @@
 system/asl-weather.service etc/systemd/system/
 system/asl-weather.timer etc/systemd/system/
 system/asl-weather-announce.logrotate etc/logrotate.d/asl-weather-announce
+asl_weather/__init__.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_build_annoucement.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_checks.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_config.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_constants.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_cache.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_logging.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/asl_weather_resilience.py usr/lib/python3/dist-packages/asl_weather/
+asl_weather/data/*.json usr/lib/python3/dist-packages/asl_weather/data/
+get_weather/data/*.json usr/lib/python3/dist-packages/get_weather/data/

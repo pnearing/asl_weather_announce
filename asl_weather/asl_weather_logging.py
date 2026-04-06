@@ -12,7 +12,7 @@ users can write to the log file.
 import logging
 import os
 
-from asl_weather_constants import LOG_LEVEL, DEFAULT_LOG_FILE
+from .asl_weather_constants import LOG_LEVEL, DEFAULT_LOG_FILE
 
 
 def _check_log_writable(log_file: str) -> bool:
