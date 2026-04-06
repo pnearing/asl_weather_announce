@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+# Clean up old get_weather and get_location directories from previous package layout
+if [ "$1" = "upgrade" ] || [ "$1" = "install" ]; then
+    if [ -d "/usr/lib/python3/dist-packages/get_weather" ]; then
+        rm -rf /usr/lib/python3/dist-packages/get_weather
+    fi
+    if [ -d "/usr/lib/python3/dist-packages/get_location" ]; then
+        rm -rf /usr/lib/python3/dist-packages/get_location
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0
