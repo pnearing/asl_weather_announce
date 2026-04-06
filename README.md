@@ -119,12 +119,24 @@ The configuration file uses INI format with the following sections:
 | Option | Description | Default |
 | -------- | ------------- | --------- |
 | `log_file` | Path to log file (optional) | console output |
-| `say_time` | Announce current time (`true`/`false`) | `false` |
-| `say_date` | Announce current date (`true`/`false`) | `false` |
 | `timezone` | IANA timezone name (e.g., `America/Toronto`) | system local time |
 | `temperature_unit` | Temperature unit (`C` or `F`) | `C` |
 | `offline` | Offline mode - time/date only (`true`/`false`) | `false` |
 | `cache_size` | Location cache size (entries) | `100` |
+| `output_file` | Output speech to file path | none |
+
+### `[announcements]` - Announcement Settings
+
+| Option | Description | Default |
+| -------- | ------------- | --------- |
+| `say_weather` | Announce weather data (`true`/`false`) | `true` |
+| `say_unit` | Announce temperature unit (`true`/`false`) | `true` |
+| `say_location` | Announce location name (`true`/`false`) | `true` |
+| `say_city` | Announce city name (`true`/`false`) | `true` |
+| `say_state_province` | Announce state/province name (`true`/`false`) | `false` |
+| `say_country` | Announce country name (`true`/`false`) | `false` |
+| `say_time` | Announce current time (`true`/`false`) | `false` |
+| `say_date` | Announce current date (`true`/`false`) | `false` |
 | `pre_announcement` | Text to announce before the main content | none |
 | `post_announcement` | Text to announce after the main content | none |
 
@@ -295,17 +307,34 @@ Today is April 4, 2026. The current time is 7 15 AM. Currently in London, Ontari
 | `-C` | `--config` | Path to configuration file |
 | `-p` | `--postal-code` | Postal/ZIP code to lookup |
 | `-c` | `--country-code` | Country code (2-letter, 3-letter, numeric, or full name) |
+| `-lat` | `--latitude` | Latitude coordinate (overrides config) |
+| `-lon` | `--longitude` | Longitude coordinate (overrides config) |
 | `-n` | `--node-number` | ASL node number |
 | `-v` | `--voice` | TTS voice file name |
-| `-l` | `--log-file` | Path to log file |
-| `-t` | `--say-time` | Announce current time |
-| `-T` | `--no-say-time` | Do not announce current time |
-| `-d` | `--say-date` | Announce current date |
-| `-D` | `--no-say-date` | Do not announce current date |
+| `-sw` | `--say-weather` | Announce the weather |
+| `-SW` | `--no-say-weather` | Do not announce the weather |
+| `-su` | `--say-unit` | Announce the temperature unit |
+| `-SU` | `--no-say-unit` | Do not announce the temperature unit |
+| `-sl` | `--say-location` | Announce the location name |
+| `-SL` | `--no-say-location` | Do not announce the location name |
+| `-st` | `--say-time` | Announce current time |
+| `-ST` | `--no-say-time` | Do not announce current time |
+| `-sd` | `--say-date` | Announce current date |
+| `-SD` | `--no-say-date` | Do not announce current date |
+| `--sc` | `--say-city` | Announce the city name |
+| `--SC` | `--no-say-city` | Do not announce the city name |
+| `--ssp` | `--say-state-province` | Announce the state/province name |
+| `--SSP` | `--no-say-state-province` | Do not announce the state/province name |
+| `--sco` | `--say-country` | Announce the country name |
+| `--SCO` | `--no-say-country` | Do not announce the country name |
 | `-b` | `--pre-announcement TEXT` | Text to announce before main content |
 | `-a` | `--post-announcement TEXT` | Text to announce after main content |
+| `-f` | `--output-file` | Output speech to file (no extension needed) |
+| `-tu` | `--temperature-unit` | Temperature unit: C or F |
+| | `--log-file` | Path to log file |
 | | `--dry-run` | Print text only, don't broadcast |
 | | `--offline` | Offline mode - time/date only without weather API calls |
+| | `--test-config` | Validate configuration and exit |
 
 ## Location Specification Methods
 

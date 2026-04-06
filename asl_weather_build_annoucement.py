@@ -129,7 +129,7 @@ def build_weather(
 
     # Build location string
     location_str = ""
-    if say_location:
+    if say_location and location_provided:
         if say_city:
             location_str += f"{weather.city}"
         if say_state_province:

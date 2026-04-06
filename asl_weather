@@ -32,9 +32,8 @@ Configuration:
     Example config file:
     [asl_weather]
     log_file = /var/log/asl_weather.log
-    say_time = true
-    say_date = true
     timezone = America/Toronto
+    temperature_unit = C
 
     [location]
     postal_code = N6A 3K7
@@ -51,15 +50,41 @@ Configuration:
     voice = en_GB-alan-low.onnx
     voice_dir = /var/lib/piper-tts
 
+    [announcements]
+    say_weather = true
+    say_unit = true
+    say_location = true
+    say_city = true
+    say_state_province = false
+    say_country = false
+    say_time = true
+    say_date = true
+    pre_announcement = Attention please
+    post_announcement = 73 and good bye
+
 Command Line Options:
     -C, --config PATH                   Path to configuration file (default: /etc/asl_weather.conf)
     -p, --postal-code CODE              Postal/ZIP code to lookup (overrides config)
     -c, --country-code CODE             Country code - accepts 2-letter (CA), 3-letter (CAN),
                                         numeric (124), or full name (Canada). Case-insensitive.
+    --latitude LAT                      Latitude coordinate (overrides config)
+    --longitude LON                     Longitude coordinate (overrides config)
     -n, --node-number NUM               ASL node number for broadcast (overrides config)
-    -u, --temperature-unit UNIT         Temperature unit - C for Celsius, F for Fahrenheit (overrides config)
+    --temperature-unit UNIT             Temperature unit - C for Celsius, F for Fahrenheit (overrides config)
     -v, --voice VOICE                   TTS voice file (e.g., en_GB-alan-low.onnx, overrides config)
-    -l, --log-file PATH                 Path to log file (logs to file instead of terminal)
+    --log-file PATH                     Path to log file (logs to file instead of terminal)
+    -w, --say-weather                   Announce the weather (overrides config)
+    -W, --no-say-weather                Do not announce the weather (overrides config)
+    -u, --say-unit                      Announce the temperature unit (overrides config)
+    -U, --no-say-unit                   Do not announce the temperature unit (overrides config)
+    -l, --say-location                  Announce the location name (overrides config)
+    -L, --no-say-location               Do not announce the location name (overrides config)
+    --say-city                          Announce the city name (overrides config)
+    --no-say-city                       Do not announce the city name (overrides config)
+    --say-state-province                Announce the state/province name (overrides config)
+    --no-say-state-province             Do not announce the state/province name (overrides config)
+    --say-country                       Announce the country name (overrides config)
+    --no-say-country                    Do not announce the country name (overrides config)
     -t, --say-time                      Announce current time before weather (overrides config)
     -T, --no-say-time                   Do not announce current time (overrides config)
     -d, --say-date                      Announce current date before weather (overrides config)
@@ -67,6 +92,8 @@ Command Line Options:
     -b, --pre-announcement TEXT         Text to announce before main content
     -a, --post-announcement TEXT        Text to announce after main content
     -f, --output-file FILE              Output speech to file (passed to asl-tts -f, no extension needed)
+    --dry-run                           Print text only, don't broadcast
+    --offline                           Offline mode - only announce time/date without weather API calls
     --test-config                       Validate configuration and exit without making API calls or announcements
 
 Location Specification:

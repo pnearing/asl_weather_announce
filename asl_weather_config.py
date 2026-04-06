@@ -54,13 +54,13 @@ Examples:
     )
 
     parser.add_argument(
-        "--latitude",
+        "-lat", "--latitude",
         type=float,
         help="Latitude coordinate (overrides config file)"
     )
 
     parser.add_argument(
-        "--longitude",
+        "-lon", "--longitude",
         type=float,
         help="Longitude coordinate (overrides config file)"
     )
@@ -72,7 +72,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--temperature-unit",
+        "-tu", "--temperature-unit",
         type=str,
         choices=["C", "F"],
         help="Temperature unit: C for Celsius, F for Fahrenheit (overrides config file)"
@@ -91,103 +91,103 @@ Examples:
     )
 
     parser.add_argument(
-        "-w", "--say-weather",
+        "-sw", "--say-weather",
         action="store_true",
         help="Announce the weather (overrides config file)"
     )
 
     parser.add_argument(
-        "-W", "--no-say-weather",
+        "-SW", "--no-say-weather",
         action="store_false",
         dest="say_weather",
         help="Do not announce the weather (overrides config file)"
     )
     
     parser.add_argument(
-        "-u", "--say-unit",
+        "-su", "--say-unit",
         action="store_true",
         help="Announce the temperature unit (overrides config file)"
     )
 
     parser.add_argument(
-        "-U", "--no-say-unit",
+        "-SU", "--no-say-unit",
         action="store_false",
         dest="say_unit",
         help="Do not announce the temperature unit (overrides config file)"
     )
 
     parser.add_argument(
-        "-l", "--say-location",
+        "-sl", "--say-location",
         action="store_true",
         help="Announce the location name (overrides config file)"
     )
 
     parser.add_argument(
-        "-L", "--no-say-location",
+        "-SL", "--no-say-location",
         action="store_false",
         dest="say_location",
         help="Do not announce the location name (overrides config file)"
     )
 
     parser.add_argument(
-        "--say-city",
+        "-sc", "--say-city",
         action="store_true",
         help="Announce the city name (overrides config file)"
     )
 
     parser.add_argument(
-        "--no-say-city",
+        "-SC", "--no-say-city",
         action="store_false",
         dest="say_city",
         help="Do not announce the city name (overrides config file)"
     )
 
     parser.add_argument(
-        "--say-state-province",
+        "-ssp", "--say-state-province",
         action="store_true",
         help="Announce the state/province name (overrides config file)"
     )
 
     parser.add_argument(
-        "--no-say-state-province",
+        "-SSP", "--no-say-state-province",
         action="store_false",
         dest="say_state_province",
         help="Do not announce the state/province name (overrides config file)"
     )
 
     parser.add_argument(
-        "--say-country",
+        "-sco", "--say-country",
         action="store_true",
         help="Announce the country name (overrides config file)"
     )
 
     parser.add_argument(
-        "--no-say-country",
+        "-SCO", "--no-say-country",
         action="store_false",
         dest="say_country",
         help="Do not announce the country name (overrides config file)"
     )
     parser.add_argument(
-        "-t", "--say-time",
+        "-st", "--say-time",
         action="store_true",
         help="Announce the current time before the weather (overrides config file)"
     )
 
     parser.add_argument(
-        "-T", "--no-say-time",
+        "-ST", "--no-say-time",
         action="store_false",
         dest="say_time",
         help="Do not announce the current time before the weather (overrides config file)"
     )
 
     parser.add_argument(
-        "-d", "--say-date",
+        "-sd", "--say-date",
         action="store_true",
         help="Announce the current date before the weather (overrides config file)"
     )
 
     parser.add_argument(
-        "-D", "--no-say-date",
+        "-SD", "--no-say-date",
         action="store_false",
         dest="say_date",
         help="Do not announce the current date before the weather (overrides config file)"
@@ -214,22 +214,30 @@ Examples:
     parser.add_argument(
         "--offline",
         action="store_true",
+        default=None,
         dest="offline",
-        help="Offline mode - only announce time/date without weather API calls"
+        help="Offline mode - only announce time/date without weather API calls (overrides config file)"
+    )
+
+    parser.add_argument(
+        "--no-offline",
+        action="store_false",
+        dest="offline",
+        help="Disable offline mode (overrides config file)"
     )
 
     parser.add_argument(
         "-b", "--pre-announcement",
         type=str,
         dest="pre_announcement",
-        help="Text to announce before the main announcement (overrides config file)"
+        help="Text to announce before the main announcement. Hint: -b = before (overrides config file)"
     )
 
     parser.add_argument(
         "-a", "--post-announcement",
         type=str,
         dest="post_announcement",
-        help="Text to announce after the main announcement (overrides config file)"
+        help="Text to announce after the main announcement. Hint: -a = after (overrides config file)"
     )
 
     return parser.parse_args()
@@ -430,6 +438,8 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
     file_config = load_config(cli_args.config)
     
     # CLI values override file config
+    # For boolean flags, check if explicitly set (not None) rather than using 'or'
+    # since 'False or True' would incorrectly override --no-* flags
     config = {
         "postal_code": cli_args.postal_code or file_config["postal_code"],
         "country_code": cli_args.country_code or file_config["country_code"],
@@ -440,18 +450,18 @@ def resolve_configuration(cli_args: argparse.Namespace) -> Dict[str, Any]:
         "voice": cli_args.voice or file_config["voice"],
         "voice_dir": file_config["voice_dir"],
         "log_file": cli_args.log_file or file_config["log_file"],
-        "say_weather": cli_args.say_weather or file_config["say_weather"],
-        "say_unit": cli_args.say_unit or file_config["say_unit"],
-        "say_location": cli_args.say_location or file_config["say_location"],
-        "say_city": cli_args.say_city or file_config["say_city"],
-        "say_state_province": cli_args.say_state_province or file_config["say_state_province"],
-        "say_country": cli_args.say_country or file_config["say_country"],
-        "say_time": cli_args.say_time or file_config["say_time"],
-        "say_date": cli_args.say_date or file_config["say_date"],
+        "say_weather": cli_args.say_weather if cli_args.say_weather is not None else file_config["say_weather"],
+        "say_unit": cli_args.say_unit if cli_args.say_unit is not None else file_config["say_unit"],
+        "say_location": cli_args.say_location if cli_args.say_location is not None else file_config["say_location"],
+        "say_city": cli_args.say_city if cli_args.say_city is not None else file_config["say_city"],
+        "say_state_province": cli_args.say_state_province if cli_args.say_state_province is not None else file_config["say_state_province"],
+        "say_country": cli_args.say_country if cli_args.say_country is not None else file_config["say_country"],
+        "say_time": cli_args.say_time if cli_args.say_time is not None else file_config["say_time"],
+        "say_date": cli_args.say_date if cli_args.say_date is not None else file_config["say_date"],
         "timezone": file_config["timezone"],
         "temperature_unit": cli_args.temperature_unit or file_config["temperature_unit"] or "C",
         "output_file": cli_args.output_file or file_config["output_file"],
-        "offline": cli_args.offline or file_config["offline"],
+        "offline": cli_args.offline if cli_args.offline is not None else file_config["offline"],
         "cache_size": file_config["cache_size"],
         "pre_announcement": cli_args.pre_announcement or file_config["pre_announcement"],
         "post_announcement": cli_args.post_announcement or file_config["post_announcement"],
