@@ -124,11 +124,9 @@ __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
 import logging
-import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime
 from typing import Dict, Any, Optional
 
 from asl_weather import build_weather, build_date, build_time
