@@ -108,14 +108,14 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from asl_weather_logging import start_logging
+
 from get_location import PostalLookup, PostalLookupError, NetworkError, normalize_country_code
 from get_weather import get_current_weather, WeatherLookupError, NetworkError
+from asl_weather_logging import DEFAULT_LOG_FILE
 
 DEFAULT_VOICE_DIR = "/var/lib/piper-tts"
 DEFAULT_CONFIG_PATH = "/etc/asl_weather.conf"
-DEFAULT_LOG_FILE = "/var/log/asl_weather/asl_weather.log"
-
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
 
 def check_root_privileges() -> None:
@@ -680,29 +680,6 @@ def get_weather(location_data: Dict[str, Any], temperature_unit: str = "C", logg
     return result
 
 
-def check_log_writable(log_file: str) -> bool:
-    """
-    Check if the log file is writable.
-    
-    If the log file exists, checks if it's writable.
-    If it doesn't exist, checks if the parent directory is writable.
-    
-    Args:
-        log_file: Path to the log file.
-        
-    Returns:
-        True if log file is writable, False otherwise.
-    """
-    if os.path.exists(log_file):
-        return os.access(log_file, os.W_OK)
-    
-    log_dir = os.path.dirname(log_file)
-    if log_dir and os.path.exists(log_dir):
-        return os.access(log_dir, os.W_OK)
-    
-    return False
-
-
 def main() -> int:
     """
     Main entry point for the ASL Weather Announce script.
@@ -718,33 +695,9 @@ def main() -> int:
 
     # Determine effective log file: CLI arg > config file > None (console logging)
     effective_log_file = cli_args.log_file or file_config["log_file"]
-    
-    # Configure logging based on effective log file
-    if effective_log_file:
-        # Check if log file is writable (directory setup happens at install time)
-        if check_log_writable(effective_log_file):
-            logging.basicConfig(
-                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                handlers=[
-                    logging.FileHandler(effective_log_file)
-                ]
-            )
-        else:
-            # Fall back to console logging if not writable
-            logging.basicConfig(
-                level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Log file {effective_log_file} is not writable, using console logging")
-    else:
-        # Log to terminal (default)
-        logging.basicConfig(
-            level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-    logger = logging.getLogger(__name__)
+
+    # Initialize logging and get logger
+    logger = start_logging(__name__, effective_log_file)
     
     # Check root privileges, unless running in dry run mode
     if not cli_args.dry_run:
