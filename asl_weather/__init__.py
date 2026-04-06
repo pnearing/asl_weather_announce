@@ -14,8 +14,8 @@ from .asl_weather_checks import (
 )
 from .asl_weather_config import parse_arguments, load_config, resolve_configuration
 from .asl_weather_logging import start_logging
-from .asl_weather_constants import DEFAULT_LOG_FILE, DEFAULT_CACHE_FILE
-from .asl_weather_cache import PersistentLRUCache
+from .asl_weather_constants import DEFAULT_LOG_FILE
+from .asl_weather_cache import LRUCache
 from .asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
 
 __all__ = [
@@ -32,8 +32,7 @@ __all__ = [
     "resolve_configuration",
     "start_logging",
     "DEFAULT_LOG_FILE",
-    "DEFAULT_CACHE_FILE",
-    "PersistentLRUCache",
+    "LRUCache",
     "CircuitBreaker",
     "APIMetrics",
     "CircuitBreakerConfig",

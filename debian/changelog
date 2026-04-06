@@ -1,3 +1,7 @@
+asl-weather-announce (1.0.3-5) trixie; urgency=medium
+
+  * Fixed a bug where the package would not install correctly.
+  
 asl-weather-announce (1.0.3-4) trixie; urgency=medium
 
   * Fixed a bunch of issues with the debian package

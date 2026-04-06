@@ -285,4 +285,4 @@ class LocationCache(LRUCache):
         if os.geteuid() == 0:  # Running as root
             return "/var/cache/asl_weather_announce/location_cache.json"
         else:
-            return str(Path.home() / ".cache" / "asl_weather_announce" / "location_cache.json")
+            return os.path.join(Path.home(), ".cache", "asl_weather_announce", "location_cache.json")
