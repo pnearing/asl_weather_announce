@@ -119,7 +119,7 @@ Notes:
     - TTS voice files must be installed in the piper-tts voice directory
 """
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
