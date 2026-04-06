@@ -81,11 +81,13 @@ jobs:
       - name: Update changelog version
         run: |
           DEB_VERSION="${{ steps.version.outputs.deb_version }}"
+          # Get the current top version from changelog (first line in parentheses)
+          CURRENT_VERSION=$(head -1 debian/changelog | grep -oP '\(\K[^)]+')
           # Update the changelog with the correct version
-          sed -i "s/1.0.0-1/$DEB_VERSION-1/" debian/changelog
+          sed -i "0,/${CURRENT_VERSION}/s//${DEB_VERSION}-1/" debian/changelog
           # Update the date in changelog
           DATE=$(date -R)
-          sed -i "s/Fri, 04 Apr 2026 18:45:00 -0400/$DATE/" debian/changelog
+          sed -i "s/[A-Z][a-z]{2}, [0-9]{1,2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} [-+][0-9]{4}/${DATE}/" debian/changelog
 
       - name: Build Debian package
         run: |
@@ -171,7 +173,7 @@ jobs:
             ### Installation
             ```bash
             # Download and install the .deb package
-            sudo dpkg -i asl-weather-announce_*.deb
+            sudo apt install ./asl-weather-announce_*.deb
             sudo apt-get install -f  # Install any missing dependencies
 
             # Or install from source
