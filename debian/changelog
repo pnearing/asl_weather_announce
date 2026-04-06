@@ -1,3 +1,8 @@
+asl-weather-announce (1.0.3-6) trixie; urgency=medium
+
+  * Updated asl_weather version.
+  * Fix testing errors.
+  
 asl-weather-announce (1.0.3-5) trixie; urgency=medium
 
   * Fixed a bug where the package would not install correctly.
