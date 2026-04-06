@@ -27,8 +27,8 @@ from .country_codes import normalize_country_code
 
 # Import resilience patterns
 try:
-    from lru_cache import LocationCache
-    from resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    from asl_weather_cache import LocationCache
+    from asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
     HAS_RESILIENCE = True
 except ImportError:
     HAS_RESILIENCE = False

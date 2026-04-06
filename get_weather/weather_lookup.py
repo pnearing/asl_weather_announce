@@ -51,24 +51,25 @@ API Information:
 
 from __future__ import annotations
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "Peter Nearing"
 __email__ = "me@peternearing.ca"
 
 from dataclasses import dataclass
 from typing import Optional, Literal, Dict, Any
+import json
+import os
 import requests
 
 # Import resilience patterns
 try:
-    from resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    from asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
     HAS_RESILIENCE = True
 except ImportError:
     HAS_RESILIENCE = False
 
 try:
     from .exceptions import (
-        WeatherLookupError,
         NetworkError,
         RateLimitError,
         APIResponseError,
@@ -79,12 +80,22 @@ except ImportError:
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from get_weather.exceptions import (
-        WeatherLookupError,
         NetworkError,
         RateLimitError,
         APIResponseError,
         InvalidLocationError,
     )
+
+# Load weather code map from JSON file for easy translation/extension
+_weather_code_map: Dict[str, str] = {}
+_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_weather_code_file = os.path.join(_data_dir, "weather_code_map_en.json")
+try:
+    with open(_weather_code_file, "r", encoding="utf-8") as _f:
+        _weather_code_map = json.load(_f)
+except (FileNotFoundError, json.JSONDecodeError, OSError):
+    # Fallback to empty dict; function will handle missing map gracefully
+    _weather_code_map = {}
 
 
 TemperatureUnit = Literal["C", "F"]
@@ -125,10 +136,6 @@ class CurrentWeatherResult:
         ...     is_day=True,
         ...     raw={}
         ... )
-        >>> print(result.location_label)
-        "London, Ontario"
-        >>> print(result.natural_language())
-        "Currently in London, Ontario it is 15 degrees Celsius with clear skies."
     """
     city: str
     state_province: Optional[str]
@@ -141,64 +148,6 @@ class CurrentWeatherResult:
     weather_description: str
     is_day: Optional[bool]
     raw: Dict[str, Any]
-
-    @property
-    def location_label(self) -> str:
-        """
-        Generate a formatted location label for display.
-        
-        Creates a human-readable location string by combining city and state/province.
-        The country is not included in the label (commented out in current implementation)
-        to keep the output concise for text-to-speech applications.
-        
-        Returns:
-            Formatted location string (e.g., "London, Ontario")
-            
-        Example:
-            >>> result = CurrentWeatherResult(
-            ...     city="London", state_province="Ontario", country="Canada",
-            ...     latitude=42.98, longitude=-81.25, temperature=15.0,
-            ...     temperature_unit="C", weather_code=0,
-            ...     weather_description="with clear skies", is_day=True, raw={}
-            ... )
-            >>> result.location_label
-            'London, Ontario'
-        """
-        parts = [self.city]
-        if self.state_province:
-            parts.append(self.state_province)
-        # elif self.country:
-        #     parts.append(self.country)
-        return ", ".join(parts)
-
-    def natural_language(self) -> str:
-        """
-        Generate a natural language weather description suitable for text-to-speech.
-        
-        Creates a complete weather statement that combines location, temperature,
-        and weather conditions in a format optimized for spoken output.
-        The temperature is formatted to remove unnecessary decimal places
-        (e.g., "15" instead of "15.0").
-        
-        Returns:
-            Natural language weather description string
-            
-        Example:
-            >>> result = CurrentWeatherResult(
-            ...     city="London", state_province="Ontario", country="Canada",
-            ...     latitude=42.98, longitude=-81.25, temperature=15.0,
-            ...     temperature_unit="C", weather_code=0,
-            ...     weather_description="with clear skies", is_day=True, raw={}
-            ... )
-            >>> result.natural_language()
-            'Currently in London, Ontario it is 15 degrees Celsius with clear skies.'
-        """
-        unit_word = "Celsius" if self.temperature_unit == "C" else "Fahrenheit"
-        temp_str = _format_temp(self.temperature)
-        return (
-            f"Currently in {self.location_label} it is "
-            f"{temp_str} degrees {unit_word} {self.weather_description}."
-        )
 
 
 def get_current_weather(
@@ -357,8 +306,8 @@ def weather_code_to_description(
     
     Translates World Meteorological Organization (WMO) weather codes into
     human-readable weather descriptions optimized for text-to-speech applications.
-    The descriptions are prefixed with appropriate conjunctions ("with", "and")
-    to flow naturally when combined with temperature information.
+    The descriptions are loaded from a JSON file to enable easy translation
+    and extension for different locales.
     
     The WMO weather code system is a standardized way to represent weather
     conditions used by meteorological services worldwide. The codes range
@@ -371,19 +320,19 @@ def weather_code_to_description(
                reserved for future day/night-specific descriptions)
                
     Returns:
-        Natural language weather description string with appropriate prefix
+        Natural language weather description string
         
     Examples:
         >>> weather_code_to_description(0)
-        'with clear skies'
+        'clear skies'
         >>> weather_code_to_description(63)
-        'with moderate rain'
+        'moderate rain'
         >>> weather_code_to_description(95)
-        'with a thunderstorm'
+        'thunderstorm'
         >>> weather_code_to_description(None)
-        '. Current weather conditions are unavailable'
+        'weather conditions are unavailable'
         >>> weather_code_to_description(999)  # Invalid code
-        '. Current weather conditions are unrecognized'
+        'weather conditions are unrecognized'
         
     WMO Code Categories:
         0-3: Cloud cover (clear to overcast)
@@ -402,85 +351,15 @@ def weather_code_to_description(
         The is_day parameter is currently unused but maintained for compatibility
         with the Open-Meteo API which provides this information. Future versions
         may use this to provide day/night-specific descriptions.
+        
+        Weather descriptions are loaded from weather_code_map.json to allow
+        for easy translation and customization without code changes.
     """
     if weather_code is None:
-        return ". Current weather conditions are unavailable"
-
-    code_map = {
-        0: "with clear skies",
-        1: "and mostly clear",
-        2: "and partly cloudy",
-        3: "and overcast",
-        45: "and foggy",
-        48: "and foggy with frost forming",
-        51: "with light drizzle",
-        53: "with moderate drizzle",
-        55: "with dense drizzle",
-        56: "with light freezing drizzle",
-        57: "with dense freezing drizzle",
-        61: "with light rain",
-        63: "with moderate rain",
-        65: "with heavy rain",
-        66: "with light freezing rain",
-        67: "with heavy freezing rain",
-        71: "with light snow",
-        73: "with moderate snow",
-        75: "with heavy snow",
-        77: "with snow grains",
-        80: "with light rain showers",
-        81: "with moderate rain showers",
-        82: "with violent rain showers",
-        85: "with light snow showers",
-        86: "with heavy snow showers",
-        95: "with a thunderstorm",
-        96: "with a thunderstorm with light hail",
-        99: "with a thunderstorm with heavy hail",
-    }
+        return _weather_code_map.get("-1", "weather conditions are unavailable")
 
     try:
-        return code_map.get(int(weather_code), ". Current weather conditions are unrecognized")
+        code_key = str(int(weather_code))
+        return _weather_code_map.get(code_key, _weather_code_map.get("-2", "weather conditions are unrecognized"))
     except (ValueError, TypeError):
-        return ". Current weather conditions are unrecognized"
-
-
-def _format_temp(value: float) -> str:
-    """
-    Format temperature value for display by removing unnecessary decimal places.
-    
-    This helper function formats temperature values to be more readable
-    for text-to-speech applications by removing trailing zeros after the
-    decimal point. This makes "15.0" display as "15" while preserving
-    decimal precision when needed (e.g., "15.4" stays as "15.4").
-    
-    Args:
-        value: Temperature value as a float
-        
-    Returns:
-        Formatted temperature string
-        
-    Examples:
-        >>> _format_temp(15.0)
-        '15'
-        >>> _format_temp(15.4)
-        '15.4'
-        >>> _format_temp(-5.0)
-        '-5'
-        >>> _format_temp(-5.7)
-        '-5.7'
-        >>> _format_temp(0.0)
-        '0'
-        
-    Implementation Details:
-        - Rounds to 1 decimal place first to handle floating point precision
-        - Checks if the rounded value is an integer
-        - If integer, returns as int (no decimal point)
-        - If not integer, returns as float with 1 decimal place
-        
-    Note:
-        This formatting is specifically designed for text-to-speech applications
-        where "fifteen point zero" is less natural than "fifteen".
-    """
-    rounded_1 = round(value, 1)
-    if rounded_1.is_integer():
-        return str(int(rounded_1))
-    return str(rounded_1)
+        return _weather_code_map.get("-2", "weather conditions are unrecognized")

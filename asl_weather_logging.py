@@ -12,8 +12,7 @@ users can write to the log file.
 import logging
 import os
 
-DEFAULT_LOG_FILE = "/var/log/asl_weather/asl_weather.log"
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+from asl_weather_constants import LOG_LEVEL, DEFAULT_LOG_FILE
 
 
 def _check_log_writable(log_file: str) -> bool:

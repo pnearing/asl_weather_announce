@@ -12,16 +12,6 @@
 # Example: /var/log/asl_weather.log or /home/user/.asl_weather.log
 # log_file = /var/log/asl_weather/asl_weather.log
 
-# Optional: Announce the current time before the weather
-# When set to true, the current time will be announced before the weather information
-# Example: true or false (default: false)
-# say_time = false
-
-# Optional: Announce the current date before the weather
-# When set to true, the current date will be announced before the weather information
-# Example: true or false (default: false)
-# say_date = false
-
 # Optional: Timezone for time announcements
 # When say_time is enabled, this specifies the timezone to use
 # Accepts IANA timezone names (e.g., America/Toronto, America/New_York, UTC)
@@ -55,6 +45,52 @@
 # Example: cache_size = 100
 # cache_size = 100
 
+[announcements]
+# Optional: Say weather announcements
+# When set to true, weather announcements will be made
+# Example: true or false (default: true)
+# say_weather = true
+
+# Optional: Say temperature unit (C or F)
+# When set to true, the temperature unit will be announced
+# If say_weather is false, this will have no effect
+# Example: true or false (default: true)
+# say_temperature_unit = true
+
+# Optional: Say location name before weather
+# When set to true, the location name will be announced before the weather information
+# If say_weather is false, this will have no effect
+# Example: true or false (default: true)
+# say_location_name = true
+
+# Optional: Announce the city name before the weather
+# When set to true, the city name will be announced before the weather information
+# If say_weather is false, or say_location_name is false, this will have no effect
+# Example: true or false (default: true)
+# say_city = true
+
+# Optional: Announce the state/province name before the weather
+# When set to true, the state/province name will be announced before the weather information
+# If say_weather is false, or say_location_name is false, this will have no effect
+# Example: true or false (default: false)
+# say_state_province = false
+
+# Optional: Announce the country name before the weather
+# When set to true, the country name will be announced before the weather information
+# If say_weather is false, or say_location_name is false, this will have no effect
+# Example: true or false (default: false)
+# say_country = false
+
+# Optional: Announce the current time before the weather
+# When set to true, the current time will be announced before the weather information
+# Example: true or false (default: false)
+# say_time = false
+
+# Optional: Announce the current date before the weather
+# When set to true, the current date will be announced before the weather information
+# Example: true or false (default: false)
+# say_date = false
+
 # Optional: Pre-announcement text
 # Text to announce before the main weather/time announcement
 # Example: pre_announcement = Attention please
@@ -64,6 +100,7 @@
 # Text to announce after the main weather/time announcement
 # Example: post_announcement = Thank you for listening, 73
 # post_announcement =
+
 
 [location]
 # Postal code or ZIP code for weather lookup
@@ -95,7 +132,9 @@ country_code = CA
 # performs a reverse geocoding lookup to determine the city name for the
 # announcement. If you want to skip this lookup and specify the location
 # name directly, set this option.
-# Example: location_name = Toronto, Ontario
+# Example: location_name = Toronto, Ontario, Canada
+# Note: Commas are used to seperate the city name from the province/state name and country.
+#       You may omit the province/state name and country if you wish.
 # Note: Only used when latitude and longitude are configured.
 # location_name =
 

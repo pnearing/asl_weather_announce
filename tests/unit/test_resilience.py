@@ -6,7 +6,7 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-from resilience import (
+from asl_weather_resilience import (
     APICallMetrics,
     APIMetrics,
     CircuitBreaker,
