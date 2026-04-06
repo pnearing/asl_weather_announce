@@ -136,8 +136,8 @@ from asl_weather import check_root_privileges, check_dependencies, validate_coor
 from asl_weather import parse_arguments, load_config, resolve_configuration
 from asl_weather import start_logging
 
-from get_location import PostalLookup, PostalLookupError, NetworkError
-from get_weather import get_current_weather, WeatherLookupError, NetworkError, CurrentWeatherResult
+from asl_weather.get_location import PostalLookup, PostalLookupError, NetworkError
+from asl_weather.get_weather import get_current_weather, WeatherLookupError, NetworkError, CurrentWeatherResult
 
 
 def get_location_postal_country(config: Dict[str, Any], logger: Optional[logging.Logger]) -> Dict[str, Any] | bool:

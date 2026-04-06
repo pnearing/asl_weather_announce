@@ -15,7 +15,7 @@ from typing import Any, NoReturn
 
 import logging
 
-from get_location import normalize_country_code
+from asl_weather.get_location import normalize_country_code
 
 
 def check_root_privileges(logger: logging.Logger = None) -> bool:

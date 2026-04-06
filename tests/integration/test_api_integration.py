@@ -10,11 +10,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import requests
 
-from get_location import PostalLookup
-from get_location.exceptions import NetworkError
-from get_weather import get_current_weather
-from get_weather.exceptions import WeatherLookupError
-
+from asl_weather.get_location import PostalLookup
+from asl_weather.get_location.exceptions import NetworkError, RateLimitError
+from asl_weather.get_weather import get_current_weather
+from asl_weather.get_weather.exceptions import WeatherLookupError
 
 class TestLocationToWeatherFlow:
     """Integration tests for the complete location → weather flow."""
@@ -60,7 +59,7 @@ class TestLocationToWeatherFlow:
         mock_weather_response.status_code = 200
         mock_weather_response.json.return_value = mock_open_meteo_response
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             # Return different responses for different URLs
             def side_effect(*args, **kwargs):
@@ -105,6 +104,7 @@ class TestLocationToWeatherFlow:
     ):
         """Test flow when Zippopotam fails and Nominatim is used."""
         lookup = PostalLookup()
+        lookup._cache = {}  # Clear any cached data from disk
 
         # Zippopotam fails (404)
         mock_zip_response = Mock()
@@ -129,7 +129,7 @@ class TestLocationToWeatherFlow:
         mock_weather_response.status_code = 200
         mock_weather_response.json.return_value = mock_open_meteo_response
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
 
             def side_effect(*args, **kwargs):
@@ -169,7 +169,7 @@ class TestLocationToWeatherFlow:
         mock_fail_response = Mock()
         mock_fail_response.status_code = 500
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             mock_session.get.return_value = mock_fail_response
             mock_session_class.return_value = mock_session
@@ -209,7 +209,7 @@ class TestReverseGeocodingFlow:
             }
         }
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
 
             def side_effect(*args, **kwargs):
@@ -246,8 +246,9 @@ class TestErrorHandlingIntegration:
     def test_network_error_propagation(self):
         """Test that network errors are properly propagated."""
         lookup = PostalLookup()
+        lookup._cache = {}  # Clear any cached data from disk
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             mock_session.get.side_effect = requests.exceptions.ConnectionError("No connection")
             mock_session_class.return_value = mock_session
@@ -259,17 +260,17 @@ class TestErrorHandlingIntegration:
     def test_rate_limit_handling(self):
         """Test that rate limits are handled across services."""
         lookup = PostalLookup()
+        lookup._cache = {}  # Clear any cached data from disk
 
         mock_rate_limit_response = Mock()
         mock_rate_limit_response.status_code = 429
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             mock_session.get.return_value = mock_rate_limit_response
             mock_session_class.return_value = mock_session
 
             # Should raise RateLimitError from both location services
-            from get_location.exceptions import RateLimitError
             with pytest.raises(RateLimitError):
                 lookup.lookup("N6A3K7", "CA")
 
@@ -292,7 +293,7 @@ class TestCachingIntegration:
         lookup._cache = {"N6A3K7:CA": cached_data}
 
         # Mock to verify no API calls are made
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             mock_session_class.return_value = mock_session
 
@@ -313,7 +314,7 @@ class TestCachingIntegration:
             }
         }
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
             mock_session.get.return_value = mock_response
             mock_session_class.return_value = mock_session
@@ -362,7 +363,7 @@ class TestUSLocations:
             }
         }
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
 
             def side_effect(*args, **kwargs):
@@ -422,7 +423,7 @@ class TestEuropeanLocations:
             }
         }
 
-        with patch('requests.Session') as mock_session_class:
+        with patch('asl_weather.get_location.postal_lookup.requests.Session') as mock_session_class:
             mock_session = MagicMock()
 
             def side_effect(*args, **kwargs):

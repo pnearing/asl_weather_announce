@@ -6,7 +6,7 @@ for normalizing various country code formats to 2-letter ISO codes.
 """
 
 import pytest
-from get_location.country_codes import (
+from asl_weather.get_location.country_codes import (
     CountryCodeNormalizer,
     normalize_country_code,
     is_valid_country_code,

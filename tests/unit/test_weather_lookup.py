@@ -9,12 +9,12 @@ import pytest
 from unittest.mock import Mock, patch
 import requests
 
-from get_weather.weather_lookup import (
+from asl_weather.get_weather.weather_lookup import (
     get_current_weather,
     CurrentWeatherResult,
     weather_code_to_description,
 )
-from get_weather.exceptions import (
+from asl_weather.get_weather.exceptions import (
     NetworkError,
     RateLimitError,
     APIResponseError,

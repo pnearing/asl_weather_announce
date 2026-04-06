@@ -14,8 +14,8 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 import requests
 
-from get_location.postal_lookup import PostalLookup
-from get_location.exceptions import NetworkError, RateLimitError, APIResponseError
+from asl_weather.get_location.postal_lookup import PostalLookup
+from asl_weather.get_location.exceptions import NetworkError, RateLimitError, APIResponseError
 
 
 class TestPostalLookupInitialization:
@@ -427,6 +427,9 @@ class TestFallbackBehavior:
     def test_zippopotam_fails_fallback_to_nominatim(self):
         """Test that Zippopotam failure falls back to Nominatim."""
         lookup = PostalLookup()
+
+        # Clear any cached data from disk
+        lookup._cache = {}
 
         mock_zip_result = None  # Zippopotam fails
         mock_nominatim_result = {

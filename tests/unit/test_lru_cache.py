@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from asl_weather_cache import LRUCache, LocationCache
+from asl_weather.asl_weather_cache import LRUCache, LocationCache
 
 
 class TestLRUCache(unittest.TestCase):

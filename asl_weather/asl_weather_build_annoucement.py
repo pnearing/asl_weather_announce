@@ -11,7 +11,7 @@ import logging
 import os
 import json
 
-from get_weather import CurrentWeatherResult
+from asl_weather.get_weather import CurrentWeatherResult
 
 # Load weather code modifier words from JSON file for easy translation/extension
 _weather_code_modifier_words: Dict[str, str] = {}
