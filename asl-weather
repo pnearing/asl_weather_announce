@@ -19,12 +19,12 @@ Features:
     - Dry-run mode for testing without broadcasting
 
 Usage:
-    sudo asl_weather
-    sudo asl_weather --postal-code N6A3K7 --country-code CA
-    sudo asl_weather --config /path/to/custom.conf
-    sudo asl_weather -p N6A3K7 -c CA -n 12345 --say-time --say-date
-    sudo asl_weather --dry-run  # Preview announcement text only
-    sudo asl_weather --pre-announcement "Attention please" --post-announcement "73"
+    sudo asl-weather
+    sudo asl-weather --postal-code N6A3K7 --country-code CA
+    sudo asl-weather --config /path/to/custom.conf
+    sudo asl-weather -p N6A3K7 -c CA -n 12345 --say-time --say-date
+    sudo asl-weather --dry-run  # Preview announcement text only
+    sudo asl-weather --pre-announcement "Attention please" --post-announcement "73"
 
 Configuration:
     Default config path: /etc/asl_weather.conf
