@@ -56,7 +56,7 @@ clean:
 
 # Install locally (for testing)
 install:
-	install -D -m 755 asl_weather.py $(DESTDIR)/usr/bin/asl_weather
+	install -D -m 755 asl-weather $(DESTDIR)/usr/bin/asl-weather
 	install -D -m 644 config.ini.example $(DESTDIR)/etc/asl_weather.conf.example
 	# Install Python modules
 	install -d -m 755 $(DESTDIR)/usr/lib/python3/dist-packages/asl_weather

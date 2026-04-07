@@ -114,7 +114,7 @@ This rotates logs daily, keeping 14 days of compressed backups. Requires the `lo
 
 The configuration file uses INI format with the following sections:
 
-### `[asl_weather]` - General Settings
+### `[asl-weather]` - General Settings
 
 | Option | Description | Default |
 | -------- | ------------- | --------- |
@@ -234,7 +234,7 @@ Attention please. Currently in London, Ontario it is 8 degrees Celsius with part
 Or via command line:
 
 ```bash
-sudo asl_weather -b "Attention please" -a "73 and good bye"
+sudo asl-weather -b "Attention please" -a "73 and good bye"
 ```
 
 ### Configuration with Direct Coordinates

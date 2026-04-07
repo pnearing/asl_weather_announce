@@ -62,7 +62,7 @@ python -m pytest tests/test_weather_lookup.py
 Use dry-run mode to test without requiring root privileges or `asl-tts`:
 
 ```bash
-python asl_weather --dry-run -p N6A3K7 -c CA -n 12345
+python asl-weather --dry-run -p N6A3K7 -c CA -n 12345
 ```
 
 ## Code Style

@@ -1,3 +1,7 @@
+asl-weather-announce (1.0.3-10) trixie; urgency=medium
+
+  * Fixed naming issues when installing.
+
 asl-weather-announce (1.0.3-9) trixie; urgency=medium
 
   * Yes, I fixed even more bugs in the debian package.
