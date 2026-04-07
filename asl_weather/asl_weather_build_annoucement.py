@@ -148,7 +148,7 @@ def build_weather(
     modifier_word = _get_modifier_word(weather.weather_code)
 
     # Build the actual weather string
-    weather_string = "Currently "
+    weather_string = "currently "
 
     if say_location and location_provided:
         weather_string += f"in {location_str}, "

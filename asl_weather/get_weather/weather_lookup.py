@@ -63,7 +63,7 @@ import requests
 
 # Import resilience patterns
 try:
-    from asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    from asl_weather.asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
     HAS_RESILIENCE = True
 except ImportError:
     HAS_RESILIENCE = False
@@ -85,6 +85,9 @@ except ImportError:
         APIResponseError,
         InvalidLocationError,
     )
+
+from asl_weather.asl_weather_constants import DEFAULT_TIMEOUT
+
 
 # Load weather code map from JSON file for easy translation/extension
 _weather_code_map: Dict[str, str] = {}
@@ -158,7 +161,7 @@ def get_current_weather(
     latitude: float,
     longitude: float,
     temperature_unit: TemperatureUnit = "C",
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_TIMEOUT,
     user_agent: str = f"weather-module/{__version__} (contact: {__author__} [<{__email__}>])",
     use_resilience: bool = True,
     logger: Optional[Any] = None,

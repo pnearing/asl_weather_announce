@@ -488,20 +488,31 @@ def main() -> int:
     else:
         time_announcement = ""
 
+    # Build date / time announcement
+    if date_announcement and time_announcement:
+        date_time_announcement = f"it is {time_announcement} on {date_announcement} and"
+    elif date_announcement:
+        date_time_announcement = f"today is {date_announcement} and"
+    elif time_announcement:
+        date_time_announcement = f"it is {time_announcement} and"
+    else:
+        date_time_announcement = ""
+
+
     # Get pre-announcement if configured
-    if config.get("pre_announcement"):
+    if config.get("pre_announcement", ""):
         pre_announcement = f"{config['pre_announcement']}. "
     else:
         pre_announcement = ""
     
     # Get post-announcement if configured
-    if config.get("post_announcement"):
+    if config.get("post_announcement", ""):
         post_announcement = f". {config['post_announcement']}"
     else:
         post_announcement = ""
     
     # Build final announcement with pre and post announcements
-    announcement = f"{pre_announcement} {time_announcement} {date_announcement} {weather_announcement} {post_announcement}"
+    announcement = f"{pre_announcement} {date_time_announcement} {weather_announcement} {post_announcement}"
     
     # Build asl-tts command line:
     asl_tts_cmd = []
@@ -513,6 +524,9 @@ def main() -> int:
     
     if config['output_file']:
         asl_tts_cmd.append(f"-f {config['output_file']}")
+    
+    announcement = announcement.strip()
+    announcement = announcement.capitalize()
     
     # Output weather information to stdout if in dry run mode
     if cli_args.dry_run:

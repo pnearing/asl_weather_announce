@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from .exceptions import (
-    PostalLookupError,
     NetworkError,
     RateLimitError,
     APIResponseError,
@@ -27,11 +26,13 @@ from .country_codes import normalize_country_code
 
 # Import resilience patterns
 try:
-    from asl_weather_cache import LocationCache
-    from asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
+    from asl_weather.asl_weather_cache import LocationCache
+    from asl_weather.asl_weather_resilience import CircuitBreaker, APIMetrics, CircuitBreakerConfig
     HAS_RESILIENCE = True
 except ImportError:
     HAS_RESILIENCE = False
+
+from asl_weather.asl_weather_constants import DEFAULT_TIMEOUT
 
 
 class PostalLookup:
@@ -63,7 +64,7 @@ class PostalLookup:
     def __init__(
         self,
         *,
-        timeout: float = 10.0,
+        timeout: float = DEFAULT_TIMEOUT,
         user_agent: str = f"postal-lookup/{__version__} (contact: {__author__} [<{__email__}>])",
         logger: Optional[logging.Logger] = None,
         cache_size: int = 100,
@@ -86,8 +87,6 @@ class PostalLookup:
             self._cache = LocationCache(max_size=cache_size, logger_instance=self.logger)
             self._cache_dir = Path(LocationCache._get_default_cache_path()).parent
             self._cache_file = self._cache_dir / "postal_cache.json"
-            # Clear any existing cache to ensure fresh state
-            self._cache.clear()
             self._circuit_breaker_zippopotam = CircuitBreaker(
                 name="zippopotam",
                 config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60),

@@ -93,6 +93,7 @@ Examples:
     parser.add_argument(
         "-sw", "--say-weather",
         action="store_true",
+        default=None,
         help="Announce the weather (overrides config file)"
     )
 
@@ -106,6 +107,7 @@ Examples:
     parser.add_argument(
         "-su", "--say-unit",
         action="store_true",
+        default=None,
         help="Announce the temperature unit (overrides config file)"
     )
 
@@ -119,6 +121,7 @@ Examples:
     parser.add_argument(
         "-sl", "--say-location",
         action="store_true",
+        default=None,
         help="Announce the location name (overrides config file)"
     )
 
@@ -132,6 +135,7 @@ Examples:
     parser.add_argument(
         "-sc", "--say-city",
         action="store_true",
+        default=None,
         help="Announce the city name (overrides config file)"
     )
 
@@ -145,6 +149,7 @@ Examples:
     parser.add_argument(
         "-ssp", "--say-state-province",
         action="store_true",
+        default=None,
         help="Announce the state/province name (overrides config file)"
     )
 
@@ -158,6 +163,7 @@ Examples:
     parser.add_argument(
         "-sco", "--say-country",
         action="store_true",
+        default=None,
         help="Announce the country name (overrides config file)"
     )
 
@@ -170,6 +176,7 @@ Examples:
     parser.add_argument(
         "-st", "--say-time",
         action="store_true",
+        default=None,
         help="Announce the current time before the weather (overrides config file)"
     )
 
@@ -183,6 +190,7 @@ Examples:
     parser.add_argument(
         "-sd", "--say-date",
         action="store_true",
+        default=None,
         help="Announce the current date before the weather (overrides config file)"
     )
 
@@ -202,12 +210,14 @@ Examples:
     parser.add_argument(
         "--dry-run",
         action="store_true",
+        default=None,
         help="Print the announcement text instead of sending it to asl-tts"
     )
 
     parser.add_argument(
         "--test-config",
         action="store_true",
+        default=None,
         help="Validate configuration and exit without making API calls or announcements"
     )
 

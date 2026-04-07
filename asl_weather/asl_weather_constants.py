@@ -27,6 +27,9 @@ DEFAULT_LOG_FILE: str = os.environ.get("ASL_WEATHER_LOG_FILE", "/var/log/asl_wea
 #: LOG_LEVEL environment variable. Valid values: DEBUG, INFO, WARNING, ERROR.
 LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
 
+#: Default timeout for HTTP requests in seconds.
+DEFAULT_TIMEOUT: float = float(os.environ.get("ASL_WEATHER_TIMEOUT", "10.0"))
+
 #: Default "true" words for the configuration file parser.
 TRUE_WORDS: frozenset[str] = frozenset({
     "true",
