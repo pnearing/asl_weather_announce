@@ -464,8 +464,8 @@ def main() -> int:
     if not config.get("offline"):
         weather = get_weather(location_data, temperature_unit=config.get("temperature_unit", "C"), logger=logger)
         if weather is False:
-            logger.error("Failed to get weather data")
-            return 8
+            logger.warning("Weather provider unavailable - will announce fallback message")
+            weather = None
     else:
         logger.info("Offline mode enabled - skipping weather lookup")
         weather = None
@@ -474,7 +474,10 @@ def main() -> int:
     if weather is not None:
         weather_announcement = build_weather(weather, config, logger)
     else:
-        weather_announcement = ""
+        if not config.get("offline"):
+            weather_announcement = "the current weather provider is unavailable"
+        else:
+            weather_announcement = ""
     
     # Build date announcement
     if config.get("say_date"):
@@ -490,13 +493,18 @@ def main() -> int:
 
     # Build date / time announcement
     if date_announcement and time_announcement:
-        date_time_announcement = f"it is {time_announcement} on {date_announcement} and"
+        date_time_announcement = f"it is {time_announcement} on {date_announcement}"
     elif date_announcement:
-        date_time_announcement = f"today is {date_announcement} and"
+        date_time_announcement = f"today is {date_announcement}"
     elif time_announcement:
-        date_time_announcement = f"it is {time_announcement} and"
+        date_time_announcement = f"it is {time_announcement}"
     else:
         date_time_announcement = ""
+
+    if not config.get("offline"):
+        date_time_announcement += " and"
+    else:
+        date_time_announcement += "."
 
 
     # Get pre-announcement if configured
@@ -507,7 +515,7 @@ def main() -> int:
     
     # Get post-announcement if configured
     if config.get("post_announcement", ""):
-        post_announcement = f". {config['post_announcement']}"
+        post_announcement = f" {config['post_announcement']}."
     else:
         post_announcement = ""
     
@@ -526,7 +534,11 @@ def main() -> int:
         asl_tts_cmd.append(f"-f {config['output_file']}")
     
     announcement = announcement.strip()
-    announcement = announcement.capitalize()
+    
+    # Capitalize first letter only, preserving the rest of the string
+    if announcement and not announcement[0].isupper():
+        announcement = announcement[0].upper() + announcement[1:]
+    
     
     # Output weather information to stdout if in dry run mode
     if cli_args.dry_run:
