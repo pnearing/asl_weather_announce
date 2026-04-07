@@ -1,3 +1,9 @@
+asl-weather-announce (1.0.3-11) trixie; urgency=medium
+
+  * Fixed caching issues.
+  * Fixed commandline parsing issues.
+  * Cleaned up text output.
+
 asl-weather-announce (1.0.3-10) trixie; urgency=medium
 
   * Fixed naming issues when installing.
